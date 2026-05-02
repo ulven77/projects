@@ -18,6 +18,10 @@ The session skill is the kind of meta-tool that's genuinely hard to design — i
 
 Productive in a foundational way — lots of files created, a system taking shape. The DaVinci friction was annoying mid-session but didn't derail anything important.
 
+## Later in the day
+
+After committing and pushing the skills work, the session turned briefly to planning. The goal list got its first real entries: the GoPro Tandådalen footage (current priority — edit, fix metadata, upload to Google Photos), the Hermes project (mock data and planning), and a git commit skill with intelligent commit splitting. The `USER_SCOPED_CLAUDE.md` was also updated to read the diary automatically on load, so every new session starts with context rather than a blank slate.
+
 ## What's next
 
-Commit and push the pending skills changes (`create-claude`, `session`, deleted template). Then open DaVinci Resolve and actually get into the GoPro footage. The tools are ready.
+Open DaVinci Resolve with the Tandådalen GoPro footage. The tooling is set up, the goals are written down, and the diary is now a first-class citizen of the workspace.

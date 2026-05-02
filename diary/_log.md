@@ -1,3 +1,19 @@
+## 20260502b — Planning + diary-on-load config
+
+**Type of work:** planning, configuration
+**Repos touched:** aisafe/projects, aisafe (USER_SCOPED_CLAUDE.md)
+
+**Session highlights:**
+- Added goals to `__todo.md`: GoPro Tandådalen (current), Hermes mock data (future), git commit skill with splitting (future)
+- Updated `USER_SCOPED_CLAUDE.md`: Claude now reads diary/log on every session load for automatic context
+
+**Significant learnings:**
+- Having Claude read the diary on load removes the need to call `/session start` just to get oriented
+
+**Pick up next time:** Edit GoPro Tandådalen footage in DaVinci Resolve; start with 2026-05-01 session
+
+---
+
 ## 20260502 — Skills build: session + create-claude + create-skill improvements
 
 **Type of work:** coding, configuration, devops
