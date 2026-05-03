@@ -16,7 +16,7 @@ One thing clicked today: Marimo over Streamlit. The choice makes sense because M
 
 ## How it felt
 
-Productive in a way that compounds. The architecture session was the kind of work that feels slow while it's happening but makes everything after it faster. The skills are starting to feel like a real system rather than a collection of experiments.
+[Not recorded]
 
 ## What's next
 
