@@ -1,3 +1,20 @@
+## 20260503b — Commit skill: first real run, self-caught bug
+
+**Type of work:** configuration, devops
+**Repos touched:** aisafe/skills
+
+**Session highlights:**
+- Ran `/commit` skill for the first time in anger — it immediately surfaced a broken subagent reference
+- `workspace-review` had been renamed to `arc42-review` but the pointer in `commit/SKILL.md` still used the old name
+- Fixed reference, updated confirmation prompt to numbered list, committed as single refactor: "Fold workspace-review into commit as a subagent"
+
+**Significant learnings:**
+- A commit orchestrator that runs a workspace review will catch its own stale references — the skill validated itself on first use
+
+**Pick up next time:** Push all unpushed commits (skills: 4 ahead, projects: 1 ahead), then start Hermes CSV loader
+
+---
+
 ## 20260503 — CLAUDE.md on-load not firing
 
 **Type of work:** debugging, configuration
