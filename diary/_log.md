@@ -1,3 +1,26 @@
+## 20260503f — arc42 refresh completed; Step 4 scoped with reproducible report
+
+**Type of work:** writing, planning
+**Repos touched:** aisafe/financial_project/hermes, aisafe/projects
+
+**Session highlights:**
+- Resumed after context compaction mid-arc42 refresh — applied all remaining corrections:
+  Scenario 1 (entry point, DuckDB mount path, removed category references),
+  Scenario 2 (Marimo via Docker), Scenario 3 (actual Behave load_transactions tests),
+  Deployment View (Marimo inside Docker with port mapping),
+  Section 8 (amount format confirmed period decimal, in-memory DuckDB test isolation note),
+  ADR-007 updated (Marimo in Docker), ADR-008 added (account number stripping),
+  Section 11 amount format risk marked resolved
+- Added `make report` (marimo export → HTML/PDF) to Step 4 in `__todo.md`
+- Committed and pushed both hermes and projects; all repos clean
+
+**Significant learnings:**
+- None new — finalization session
+
+**Pick up next time:** Step 4 — categorize transactions, write BDD feature, update notebook, add `make report`
+
+---
+
 ## 20260503e — Hermes: CSV pipeline, Marimo notebook, Behave tests
 
 **Type of work:** coding, devops

@@ -17,12 +17,13 @@ Real data exists (3 accounts, back to 2021). No mock data needed. Goal: load the
 - ~~Reactive account filter, 2-month rolling view~~
 - ~~Milestone reached: real numbers visible in notebook~~
 
-**Step 4 — Categorize transactions**
+**Step 4 — Categorize transactions and produce reproducible report**
 - Define keyword → category rules (e.g. HEMKOP → Groceries, TELIA → Telecom)
 - Apply rules during ingestion or as a query layer in DuckDB
 - Write BDD feature: "categorize transactions"
 - Update notebook: costs grouped by category, per account, rolling 2 months
-- Milestone: see categorized cost report in notebook
+- Add `make report` target: export notebook to HTML/PDF via `marimo export`
+- Milestone: see categorized cost report in notebook and as a saved file
 
 
 ## Shortterm goals (Max 3)
