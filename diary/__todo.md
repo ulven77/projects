@@ -6,22 +6,23 @@ Real data exists (3 accounts, back to 2021). No mock data needed. Goal: load the
 - ~~Fix Makefile: mount `../../external_data/real_data/shared` instead of `$(PWD)/shared`~~
 - ~~Verify `make run` can read the CSV files inside the container~~
 
-**Step 2 — Load and parse transactions**
-- Write BDD feature: "load transactions from CSV"
-- Implement CSV loader in `src/hermes/` (semicolon-separated, UTF-8 BOM, Swedish headers)
-- Map columns: Bokföringsdatum → date, Text → description, Belopp → amount, Saldo → balance
-- Handle all 3 account files
+**~~Step 2 — Load and parse transactions~~ ✓**
+- ~~Write BDD feature: "load transactions from CSV"~~
+- ~~Implement CSV loader (semicolon-separated, UTF-8 BOM, Swedish headers)~~
+- ~~Strip account numbers at ingestion boundary — only friendly names in DuckDB~~
+- ~~8115 transactions loaded across 3 accounts, all Behave tests passing~~
 
-**Step 3 — Display uncategorized monthly costs**
-- Write BDD feature: "show monthly cost summary"
-- CLI output: per-account table, grouped by month, last 2 months
-- Milestone: see full 2 months of uncategorized costs in terminal
+**~~Step 3 — Display rolling monthly costs~~ ✓**
+- ~~Marimo notebook served inside Docker on port 2718~~
+- ~~Reactive account filter, 2-month rolling view~~
+- ~~Milestone reached: real numbers visible in notebook~~
 
 **Step 4 — Categorize transactions**
-- Define category rules (keyword → category mapping, e.g. HEMKOP → Groceries, TELIA → Telecom)
-- Apply rules to all transactions
-- CLI output: categorized cost summary, last 2 months
-- Milestone: see full 2 months of categorized costs in terminal
+- Define keyword → category rules (e.g. HEMKOP → Groceries, TELIA → Telecom)
+- Apply rules during ingestion or as a query layer in DuckDB
+- Write BDD feature: "categorize transactions"
+- Update notebook: costs grouped by category, per account, rolling 2 months
+- Milestone: see categorized cost report in notebook
 
 
 ## Shortterm goals (Max 3)

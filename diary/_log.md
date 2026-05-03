@@ -1,3 +1,24 @@
+## 20260503e — Hermes: CSV pipeline, Marimo notebook, Behave tests
+
+**Type of work:** coding, devops
+**Repos touched:** aisafe/financial_project/hermes, aisafe/projects
+
+**Session highlights:**
+- Fixed Makefile to mount real data directory (`../external_data/real_data/shared`)
+- Designed architecture: Marimo runs inside Docker with port mapping; account numbers stripped at ingestion boundary
+- Implemented CSV loader (`hermes.ingest`): reads 3 Swedbank CSVs, strips account numbers, writes to DuckDB — 8115 transactions
+- Marimo notebook (`make notebook`) served at localhost:2718, reactive account filter, rolling 2-month view
+- Behave tests use in-memory DuckDB — 3 scenarios, 14 steps, all green
+- User confirmed: numbers visible in notebook, data looks correct
+
+**Significant learnings:**
+- Privacy by architecture: ingestion runs `--network=none` and strips account numbers before DuckDB; notebook (which needs network to serve UI) never sees sensitive identifiers
+- In-memory DuckDB for tests keeps the test target clean and fast without touching real data
+
+**Pick up next time:** Categorize transactions — define keyword rules, apply during ingestion, update notebook to show costs by category
+
+---
+
 ## 20260503d — Session-end skill review and diary corrections
 
 **Type of work:** configuration, writing

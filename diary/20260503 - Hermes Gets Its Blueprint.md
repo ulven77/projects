@@ -1,24 +1,24 @@
 # 20260503 — Hermes Gets Its Blueprint
 
-A day that started sleepy and ended with Hermes having a real architecture and a handful of new tools that haven't been tested yet.
+A day that started sleepy and ended with real numbers visible in a notebook.
 
 ## What happened
 
 The morning opened badly — the CLAUDE.md on-load sequence hadn't fired at session start. No diary read, no symlink check. Caught it quickly, ran the sequence manually, confirmed the symlink was intact. A two-minute fix, but a reminder that being in context isn't the same as acting on it.
 
-Then the real work began. Hermes got its architecture today. A 453-line arc42.md landed, documenting everything: the two-phase design where a Dockerized ingestion pipeline loads Swedish bank CSVs into a local DuckDB file, and a Marimo notebook handles interactive exploration and printable reports. ADRs cover the key decisions — Docker-only, BDD-first, DuckDB over SQLite, Marimo over Streamlit. The volume mount was wired up properly too: the container now reads from `shared/hellomessage.txt` instead of a hardcoded string, and the `.gitignore` was updated to make sure the DuckDB file with real bank data never gets committed.
+Then the real work began. Hermes got its architecture — a 453-line arc42.md documenting the two-phase design: a Dockerized ingestion pipeline loading Swedish bank CSVs into DuckDB, and a Marimo notebook for interactive exploration. ADRs cover the key decisions: Docker-only, BDD-first, DuckDB, Marimo over Streamlit. Three skills were also built from scratch: arc42, workspace-review (later folded into the commit subagent), and the commit orchestrator.
 
-In parallel, three skills were built from scratch: the arc42 skill (create and refresh), a workspace-review skill that became the commit subagent, and the commit orchestrator itself. By end of day the commit skill ran for the first time in anger — and immediately caught a broken reference in its own skill definition. Fixed it, added the numbered confirmation prompt, and committed clean.
+In the afternoon the pipeline became real. The Makefile was fixed to mount the actual data directory, then the full implementation landed: a CSV loader that strips account numbers at the ingestion boundary (only friendly names reach the database), a DuckDB writer, a Marimo notebook served inside Docker on port 2718, and Behave tests validating the whole pipeline using in-memory DuckDB. `make ingest` loaded 8115 transactions from three accounts. `make test` passed all 14 steps. `make notebook` opened the browser and real numbers appeared.
 
 ## Interesting moments
 
-One thing clicked today: Marimo over Streamlit. The choice makes sense because Marimo notebooks are reproducible and exportable, which matters when the output is a monthly cost report someone might actually print. The commit orchestrator ran for the first time too — it caught a broken filename in its own config, which is a good sign but not a real test. The tool is built and plausible. Whether it holds up on actual work is still an open question.
+The account number decision was the right call: the ingestion container has no network access and strips all account numbers before writing to DuckDB, so the notebook — which does need network to serve its UI — never sees anything sensitive. Privacy by architecture, not by policy.
 
 ## How it felt
 
-_"The arc42 documentation looks like it does its job, and Claude reliably fixes issues when I point them out. The skills system is coming together and the toil around commits has reduced — working across many repos at once feels good, though I'm not sure if that will blow up in the future. The diary writer improved too, which is nice."_
+_"Good, I see numbers in a notebook. So now we just need to find a way to categorize expenses and start making reports."_
 ~ Ulf Rask
 
 ## What's next
 
-Hermes has a blueprint. Now it needs data. The next step is the CSV loader — parse the three Swedish bank account files, map the columns (Bokföringsdatum, Text, Belopp, Saldo), and get a rolling two-month cost summary printing in the terminal. That's the first real milestone.
+Categorize transactions — define keyword rules (HEMKOP → Groceries, TELIA → Telecom) and apply them during ingestion or as a query layer. Then build the report view in the notebook: costs by category, per account, rolling two months.
