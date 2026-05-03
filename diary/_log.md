@@ -1,3 +1,22 @@
+## 20260503d — Session-end skill review and diary corrections
+
+**Type of work:** configuration, writing
+**Repos touched:** aisafe/skills, aisafe/projects
+
+**Session highlights:**
+- Reviewed session-end skill; found it relied on conversation history as primary source, missing full-day work
+- Fixed gap detection: now uses `git log --since today` per repo and cross-references against existing session log
+- Added step to ask user how the session felt — never infer or invent emotions in the diary
+- Corrected today's diary twice: removed invented "the tool works" claim and invented feelings section
+
+**Significant learnings:**
+- Conversation history only covers the current Claude session — git log timestamps are the ground truth for what happened across the whole day
+- The diary is a personal record; feelings must come from the user, not be fabricated by the tool
+
+**Pick up next time:** Hermes CSV loader — parse three Swedish bank account CSVs, map columns, print rolling 2-month cost summary
+
+---
+
 ## 20260503c — Commit skill: first real run, self-caught bug
 
 **Type of work:** configuration, devops

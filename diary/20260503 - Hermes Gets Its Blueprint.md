@@ -16,7 +16,7 @@ One thing clicked today: Marimo over Streamlit. The choice makes sense because M
 
 ## How it felt
 
-[Not recorded]
+The arc42 documentation looks like it does its job, and Claude reliably fixes issues when I point them out. The skills system is coming together and the toil around commits has reduced — working across many repos at once feels good, though I'm not sure if that will blow up in the future. The diary writer improved too, which is nice.
 
 ## What's next
 
