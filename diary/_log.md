@@ -1,4 +1,4 @@
-## 20260503b — Commit skill: first real run, self-caught bug
+## 20260503c — Commit skill: first real run, self-caught bug
 
 **Type of work:** configuration, devops
 **Repos touched:** aisafe/skills
@@ -6,12 +6,34 @@
 **Session highlights:**
 - Ran `/commit` skill for the first time in anger — it immediately surfaced a broken subagent reference
 - `workspace-review` had been renamed to `arc42-review` but the pointer in `commit/SKILL.md` still used the old name
-- Fixed reference, updated confirmation prompt to numbered list, committed as single refactor: "Fold workspace-review into commit as a subagent"
+- Fixed reference, updated confirmation prompt to numbered list, committed as single refactor
 
 **Significant learnings:**
 - A commit orchestrator that runs a workspace review will catch its own stale references — the skill validated itself on first use
 
-**Pick up next time:** Push all unpushed commits (skills: 4 ahead, projects: 1 ahead), then start Hermes CSV loader
+**Pick up next time:** Start Hermes CSV loader — parse three Swedish bank account CSVs, map columns, print rolling 2-month cost summary
+
+---
+
+## 20260503b — Hermes architecture + three new skills
+
+**Type of work:** coding, planning, configuration
+**Repos touched:** aisafe/financial_project/hermes, aisafe/skills
+
+**Session highlights:**
+- Wrote 453-line `arc42.md` for Hermes: system context, container view, runtime scenarios, deployment view, and ADRs
+- Key ADRs: Docker-only (network=none for ingestion), BDD-first, DuckDB over SQLite, Marimo over Streamlit
+- Wired up volume mount: container now reads `shared/hellomessage.txt` instead of hardcoded string; BDD scenario updated
+- Added `.gitignore` entries for DuckDB file (contains real bank data), SBOM, and generated artefacts
+- Built arc42 skill (create + refresh subagents), workspace-review skill, and commit skill from scratch
+- Updated `__todo.md`: goal reframed as "real data pipeline with DuckDB + Marimo" (no mock data needed)
+
+**Significant learnings:**
+- Marimo is preferred over Streamlit because notebooks are reproducible and exportable — matters when output is a printable monthly report
+- DuckDB is the right fit here: embedded, zero-ops, fast on CSV, and safe to keep next to the code (just gitignore the file)
+- arc42 ADRs are worth writing early — they make the "why" explicit before the code obscures it
+
+**Pick up next time:** Hermes CSV loader — Step 1 of the real data pipeline
 
 ---
 
