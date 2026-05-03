@@ -1,10 +1,27 @@
 ## Current goal (Max 1)
-### Hermes: Create mock data and plan project
-Define the project scope and generate realistic mock data to work with.
-- Plan project structure and goals
-- See full 2 months of uncategorized costs in tool of choice
-- See full 2 months of categorized costs in tool of choice
-- 
+### Hermes: Display rolling monthly costs from real data
+Real data exists (3 accounts, back to 2021). No mock data needed. Goal: load the CSVs and display a rolling 2-month cost summary in the terminal.
+
+**Step 1 — Wire up real data (unblock everything)**
+- Fix Makefile: mount `../../external_data/real_data/shared` instead of `$(PWD)/shared`
+- Verify `make run` can read the CSV files inside the container
+
+**Step 2 — Load and parse transactions**
+- Write BDD feature: "load transactions from CSV"
+- Implement CSV loader in `src/hermes/` (semicolon-separated, UTF-8 BOM, Swedish headers)
+- Map columns: Bokföringsdatum → date, Text → description, Belopp → amount, Saldo → balance
+- Handle all 3 account files
+
+**Step 3 — Display uncategorized monthly costs**
+- Write BDD feature: "show monthly cost summary"
+- CLI output: per-account table, grouped by month, last 2 months
+- Milestone: see full 2 months of uncategorized costs in terminal
+
+**Step 4 — Categorize transactions**
+- Define category rules (keyword → category mapping, e.g. HEMKOP → Groceries, TELIA → Telecom)
+- Apply rules to all transactions
+- CLI output: categorized cost summary, last 2 months
+- Milestone: see full 2 months of categorized costs in terminal
 
 
 ## Shortterm goals (Max 3)
