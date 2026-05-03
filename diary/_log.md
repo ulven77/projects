@@ -1,3 +1,20 @@
+## 20260503 — CLAUDE.md on-load not firing
+
+**Type of work:** debugging, configuration
+**Repos touched:** aisafe/projects
+
+**Session highlights:**
+- Noticed CLAUDE.md on-load sequence (symlink check, diary read) didn't run at session start
+- Ran the sequence manually; symlink was intact, no structural issue
+- Root cause: behavioral — Claude must treat first message as a trigger to run on-load before responding
+
+**Significant learnings:**
+- On-load instructions in CLAUDE.md only fire if Claude actively reads and acts on them before the first response; being in context is not enough
+
+**Pick up next time:** Start Hermes mock data — plan project structure and create two months of realistic financial data
+
+---
+
 ## 20260502b — Planning + diary-on-load config
 
 **Type of work:** planning, configuration
