@@ -1,6 +1,6 @@
 # 20260503 — Hermes Gets Its Blueprint
 
-A day that started sleepy and ended with Hermes having a real architecture and the commit tooling finally worth trusting.
+A day that started sleepy and ended with Hermes having a real architecture and a handful of new tools that haven't been tested yet.
 
 ## What happened
 
@@ -12,7 +12,7 @@ In parallel, three skills were built from scratch: the arc42 skill (create and r
 
 ## Interesting moments
 
-Two things clicked today. First: Marimo over Streamlit — the choice makes sense because Marimo notebooks are reproducible and exportable, which matters when the output is a monthly cost report someone might actually print. Second: having the commit orchestrator catch its own stale reference on the first real run. That's the loop closing. The tool works.
+One thing clicked today: Marimo over Streamlit. The choice makes sense because Marimo notebooks are reproducible and exportable, which matters when the output is a monthly cost report someone might actually print. The commit orchestrator ran for the first time too — it caught a broken filename in its own config, which is a good sign but not a real test. The tool is built and plausible. Whether it holds up on actual work is still an open question.
 
 ## How it felt
 
