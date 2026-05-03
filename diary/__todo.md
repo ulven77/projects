@@ -2,9 +2,9 @@
 ### Hermes: Display rolling monthly costs from real data
 Real data exists (3 accounts, back to 2021). No mock data needed. Goal: load the CSVs and display a rolling 2-month cost summary in the terminal.
 
-**Step 1 — Wire up real data (unblock everything)**
-- Fix Makefile: mount `../../external_data/real_data/shared` instead of `$(PWD)/shared`
-- Verify `make run` can read the CSV files inside the container
+**~~Step 1 — Wire up real data (unblock everything)~~ ✓**
+- ~~Fix Makefile: mount `../../external_data/real_data/shared` instead of `$(PWD)/shared`~~
+- ~~Verify `make run` can read the CSV files inside the container~~
 
 **Step 2 — Load and parse transactions**
 - Write BDD feature: "load transactions from CSV"
