@@ -1,0 +1,21 @@
+# Generated pipeline output — never commit
+transactions.json
+categorized_transactions.json
+unknown_merchants.json
+*_budget.md
+
+# Raw bank exports
+data/
+
+# Config files containing personal financial data
+accounts.json
+categories.json
+annotations.json
+discrepancy_log.md
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+dist/

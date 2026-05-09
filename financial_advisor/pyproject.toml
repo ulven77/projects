@@ -1,0 +1,18 @@
+[project]
+name = "financial-advisor"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = ["openpyxl>=3.1"]
+
+[project.scripts]
+fa-extract = "financial_advisor.extract:main"
+fa-unknown-merchants = "financial_advisor.categorize:main_unknown_merchants"
+fa-categorize = "financial_advisor.categorize:main_categorize"
+fa-report = "financial_advisor.report:main"
+
+[build-system]
+requires = ["setuptools>=80"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]

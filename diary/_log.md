@@ -1,3 +1,22 @@
+## 20260509 — Financial advisor pipeline: full build + security review
+
+**Type of work:** coding, configuration, debugging
+**Repos touched:** aisafe/projects
+
+**Session highlights:**
+- Built the complete three-stage Docker pipeline: extract.py (SEB xlsx/pdf), categorize.py (rule engine + annotations), report.py (13-section Markdown + Mermaid report)
+- Implemented discrepancy detection: flow rule violations, uncategorized transactions, monthly limit overruns with exceptions system and discrepancy_log.md
+- Wired SEB transfer quirk into flow rules — incoming transfers show account holder name (PETRA RASK/ULF RASK), not account name; added to allowed_sources
+- Security review passed: CLAUDE.md scrubbed of surnames/account numbers; RULES.md moved to ~/financials/ (gitignored, outside repo)
+
+**Significant learnings:**
+- SEB incoming transfers show the account *holder's* name, not the account name — flow rules must allow both account name and holder names as valid sources
+- Docker volume mounts mean host paths like `/home/uven/financials/foo.json` don't exist inside the container — always use the mount path (`/reports/foo.json`)
+
+**Pick up next time:** Commit financial_advisor to GitHub; action the improvements list (cancel subscriptions, identify APPLE COM/BI charges); export Petra personal account
+
+---
+
 ## 20260503f — arc42 refresh completed; Step 4 scoped with reproducible report
 
 **Type of work:** writing, planning

@@ -1,32 +1,32 @@
 ## Current goal (Max 1)
-### Hermes: Display rolling monthly costs from real data
-Real data exists (3 accounts, back to 2021). No mock data needed. Goal: load the CSVs and display a rolling 2-month cost summary in the terminal.
+### Financial Advisor: 12-month expense forecast (M2)
+Fixed monthly set-aside amounts for irregular bills, so the household can see what to save each month to cover annual/quarterly costs without surprises.
 
-**~~Step 1 — Wire up real data (unblock everything)~~ ✓**
-- ~~Fix Makefile: mount `../../external_data/real_data/shared` instead of `$(PWD)/shared`~~
-- ~~Verify `make run` can read the CSV files inside the container~~
+**Step 1 — Action the improvements list**
+- Cancel STYRKEFABRIK, Adobe, Nextory, Allente subscriptions
+- Move Amazon Prime payment to Gemensamt räkningar
+- Move Klarna payments to Gemensamt räkningar
+- Identify 10× APPLE COM/BI charges and recategorize correctly
+- Understand 2× SAN FRANCISC charges
 
-**~~Step 2 — Load and parse transactions~~ ✓**
-- ~~Write BDD feature: "load transactions from CSV"~~
-- ~~Implement CSV loader (semicolon-separated, UTF-8 BOM, Swedish headers)~~
-- ~~Strip account numbers at ingestion boundary — only friendly names in DuckDB~~
-- ~~8115 transactions loaded across 3 accounts, all Behave tests passing~~
+**Step 2 — Export missing accounts**
+- Export Petra personal account (brave-raven) — will unlock Petra's allowance and large räkningar deposits
+- Export remaining accounts as needed
 
-**~~Step 3 — Display rolling monthly costs~~ ✓**
-- ~~Marimo notebook served inside Docker on port 2718~~
-- ~~Reactive account filter, 2-month rolling view~~
-- ~~Milestone reached: real numbers visible in notebook~~
+**Step 3 — Build forecast**
+- Identify irregular annual/quarterly bills in categorized_transactions.json
+- Compute monthly set-aside per category
+- Add forecast section to report.py
 
-**Step 4 — Categorize transactions and produce reproducible report**
-- Define keyword → category rules (e.g. HEMKOP → Groceries, TELIA → Telecom)
+
+## Shortterm goals (Max 3)
+
+**Hermes: Categorize transactions and produce reproducible report (Step 4)**
+- Define keyword → category rules (HEMKOP → Groceries, TELIA → Telecom, etc.)
 - Apply rules during ingestion or as a query layer in DuckDB
 - Write BDD feature: "categorize transactions"
 - Update notebook: costs grouped by category, per account, rolling 2 months
 - Add `make report` target: export notebook to HTML/PDF via `marimo export`
-- Milestone: see categorized cost report in notebook and as a saved file
-
-
-## Shortterm goals (Max 3)
 
 **GoPro Tandådalen: edit and upload to Google Photos**
 Create movies from GoPro footage of Tandådalen trips with correct GPS positioning and dates, then upload to Google Photos.
@@ -43,10 +43,10 @@ Build a `/commit` skill that stages, drafts a commit message from the diff, and 
 - Implement commit splitting: analyze diff and separate renames, refactors, file moves, and functional changes into distinct commits for easier review
 
 Session: start improvement
-_On session start  Claude looks at platform engineering, AI sites and the contents of last session and recommends 3 articles to read_
+_On session start Claude looks at platform engineering, AI sites and the contents of last session and recommends 3 articles to read_
 
 ## Active project milestones (Max 3)
-- Skills definitions baseline(AI learning)
--  Hermes - See rolling monthly costs calculation for all important accounts
-- Hermes - Cost control
-- Gopro Tandådalen movie
+- Financial Advisor M1 ✓ — last month expenses as categorized budget
+- Financial Advisor M2 — 12-month expense forecast + fixed monthly set-aside
+- Hermes — cost control with categorized report
+- GoPro Tandådalen movie
