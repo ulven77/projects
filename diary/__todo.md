@@ -8,10 +8,30 @@ Fixed monthly set-aside amounts for irregular bills, so the household can see wh
 - Move Klarna payments to Gemensamt räkningar
 - Identify 10× APPLE COM/BI charges and recategorize correctly
 - Understand 2× SAN FRANCISC charges
+- Create Assets and Expenses report report
+    - Purpose of report is to follow-up spending on the big expenses by asset and expense type.
+        - Assets
+            - Cars (skills/commands/budget/assets/vehicle-financial-reality-metrics.md)
+                - RKN 218 (Volvo S80 / Car)
+                - PTJ 029 (Toyota Avensis / Car)
+                - MSA 52U (Kia E-soul / Car)
+            - Caravan (See /home/uven/repos/aisafe/skills/commands/budget/assets/camper-financial-reality-metrics)
+                - 
+            - House (see [text](../../skills/commands/budget/assets/housing-financial-reality-metrics.md))
+                - 
+        - Liabilities 
+            - Loans without collateral (see /home/uven/repos/aisafe/skills/commands/budget/assets/Unsecured Loan Financial Reality Metrics.md)
+        - Non-Assett/Loan related recurring costs (Basically quality of life services)
+            - All recurring, periodic and known irregular costs not connected to major assets
+            - Were we have little say in how much they are other than adjusting recurring costs.
+        - Food/consumption
+            Everything
+        - Allowanses / person related costs.
 
 **Step 2 — Reconcile May 2026**
+- ⚠ First: recover budget-net definition gap — diary's April budget net (+27 181) is 18 000 kr larger than report.py Overview Net (+9 181). Formula unknown. April facit at ~/financials/facit/2026-04/ for reference.
 - First month with the new MAT routing (lön → Matvecka) — verify the new annotation fires correctly
-- Confirm the reconciliation identity holds (tracked = budget + transfers)
+- Use `/budget reconcile 2026-05` (skill is in diagnostic mode until budget-net is resolved)
 - Note: Petra's account is permanently external by design — not to be exported
 
 **Step 3 — Build forecast**

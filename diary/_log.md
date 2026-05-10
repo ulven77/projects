@@ -1,3 +1,23 @@
+## 20260510b — /budget skill: reconcile phase built and dry-run against April facit
+
+**Type of work:** coding, planning, research
+**Repos touched:** aisafe/skills
+
+**Session highlights:**
+- Designed four-phase /budget skill (capture, categorize, reconcile, report); built reconcile phase first as it gates May 2026 close
+- Moved standalone /reconcile skill into budget tree (budget:subagents:reconcile); frozen April report + inputs as facit at ~/financials/facit/2026-04/ for regression testing
+- Dry-ran /budget reconcile 2026-04: discrepancy walk matched facit (clean); identity check ✗ — both the two-term formula and the pairing-based three-term formula fail to reproduce April's diary calibration numbers (+1 319 / +27 181 / 25 862)
+- Root cause partly traced: pairing via build_transfer_pairs is mandatory for leakage (SEB shows sender names on incoming legs, not account numbers); budget-net gap of 18 000 kr vs report.py Overview Net is definitional and unresolved
+
+**Significant learnings:**
+- The reconciliation calibration step worked exactly as designed: it caught a wrong formula instead of silently declaring closure — this is the correct behavior for a diagnostic identity check
+- `build_transfer_pairs` in report.py is load-bearing for leakage classification: never classify transfer legs independently on SEB data because incoming legs carry personal names, not account numbers
+- The diary's "budget net" (+27 181) differs from report.py's Overview Net (+9 181) by 18 000 kr — the legacy formula that produced the diary number has not been recovered in code and is an open issue before May 2026 reconciliation can be trusted
+
+**Pick up next time:** Recover the budget-net definition gap (18 000 kr) before running /budget reconcile for May 2026 — likely requires re-running the legacy scratch computation used during the April close
+
+---
+
 ## 20260510 — April reconciliation closes; accounts.yaml + rule cleanup
 
 **Type of work:** debugging, configuration, writing
