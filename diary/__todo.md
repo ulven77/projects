@@ -9,9 +9,10 @@ Fixed monthly set-aside amounts for irregular bills, so the household can see wh
 - Identify 10× APPLE COM/BI charges and recategorize correctly
 - Understand 2× SAN FRANCISC charges
 
-**Step 2 — Export missing accounts**
-- Export Petra personal account (brave-raven) — will unlock Petra's allowance and large räkningar deposits
-- Export remaining accounts as needed
+**Step 2 — Reconcile May 2026**
+- First month with the new MAT routing (lön → Matvecka) — verify the new annotation fires correctly
+- Confirm the reconciliation identity holds (tracked = budget + transfers)
+- Note: Petra's account is permanently external by design — not to be exported
 
 **Step 3 — Build forecast**
 - Identify irregular annual/quarterly bills in categorized_transactions.json

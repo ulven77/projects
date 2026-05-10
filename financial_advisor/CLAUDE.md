@@ -37,7 +37,7 @@ All Docker runs use `--network=none`. The financials directory is mounted as `/r
   categorized_transactions.json # output of make categorize
   categories.json              # master config (rules, limits, flow rules, improvements)
   annotations.json             # exact-match transaction overrides
-  accounts.json                # account number → display name map
+  accounts.yaml                # account model: household vs external sections, swish_alias, descriptions, intended behaviours, expected deviations
   discrepancy_log.md           # human explanation for each discrepancy exception
   RULES.md                     # account structure, flow rules, rule engine docs (private)
   YYYY-MM_budget.md            # generated monthly reports
