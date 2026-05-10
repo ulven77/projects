@@ -5,10 +5,13 @@ import re
 import sys
 from pathlib import Path
 
+import yaml
+
 REPORTS_DIR = Path("/reports")
 TRANSACTIONS_FILE = REPORTS_DIR / "transactions.json"
 CATEGORIES_FILE = REPORTS_DIR / "categories.json"
 ANNOTATIONS_FILE = REPORTS_DIR / "annotations.json"
+ACCOUNTS_FILE = REPORTS_DIR / "accounts.yaml"
 UNKNOWN_FILE = REPORTS_DIR / "unknown_merchants.json"
 CATEGORIZED_FILE = REPORTS_DIR / "categorized_transactions.json"
 
@@ -32,7 +35,28 @@ def load_annotations() -> list[dict]:
     return json.loads(ANNOTATIONS_FILE.read_text())
 
 
-def find_category(tx: dict, account_name: str, rules: list[dict]) -> str | None:
+def load_accounts() -> set[str]:
+    """Return the set of household account number keys.
+
+    Only household accounts (where money internally circulates) trigger the
+    auto-Internal-transfers classification. External entries in accounts.json
+    (Marie, Länsförsäkringar fund, etc.) are display-only and must fall through
+    to keyword rules.
+    """
+    if not ACCOUNTS_FILE.exists():
+        return set()
+    data = yaml.safe_load(ACCOUNTS_FILE.read_text())
+    keys: set[str] = set(data.get("household", {}).keys())
+    for entry in data.get("household", {}).values():
+        if isinstance(entry, dict) and entry.get("swish_alias"):
+            keys.add(entry["swish_alias"])
+    return keys
+
+
+_DIGITS_RE = re.compile(r"\D")
+
+
+def find_category(tx: dict, account_name: str, rules: list[dict], known_accounts: set[str] = frozenset()) -> str | None:
     """Return the first matching category for a transaction, or None.
 
     Rule fields (all optional except category):
@@ -45,10 +69,17 @@ def find_category(tx: dict, account_name: str, rules: list[dict]) -> str | None:
 
     All specified fields must match (AND). Unspecified fields are wildcards.
     """
-    desc_upper = (tx.get("description") or "").upper()
+    desc = tx.get("description") or ""
+    desc_upper = desc.upper()
     amount = tx.get("amount") or 0.0
     date_str = tx.get("date", "")
     account_lower = account_name.lower()
+
+    # Description is a known account number → always an internal transfer.
+    # SEB populates outgoing transfer descriptions with the destination account number,
+    # making this a reliable machine-generated signal that should not be overridden by keywords.
+    if known_accounts and _DIGITS_RE.sub("", desc) in known_accounts:
+        return "Internal transfers"
 
     for rule in rules:
         if rule.get("keyword") and rule["keyword"].upper() not in desc_upper:
@@ -89,12 +120,13 @@ def main_unknown_merchants():
 
     accounts = json.loads(TRANSACTIONS_FILE.read_text())
     rules = load_rules()
+    known_accounts = load_accounts()
 
     unknown: set[str] = set()
     for account in accounts:
         for tx in account["transactions"]:
             merchant = strip_date_suffix(tx["description"])
-            if merchant and not find_category(tx, account["account"], rules):
+            if merchant and not find_category(tx, account["account"], rules, known_accounts):
                 unknown.add(merchant)
 
     result = sorted(unknown)
@@ -112,6 +144,7 @@ def main_categorize():
     accounts = json.loads(TRANSACTIONS_FILE.read_text())
     rules = load_rules()
     annotations = load_annotations()
+    known_accounts = load_accounts()
 
     if not rules:
         print("WARNING: categories.json is empty — all transactions will be Uncategorized.", file=sys.stderr)
@@ -129,7 +162,7 @@ def main_categorize():
             if category:
                 annotation_count += 1
             else:
-                category = find_category(tx, account["account"], rules)
+                category = find_category(tx, account["account"], rules, known_accounts)
             tx["category"] = category or "Uncategorized"
             if category:
                 categorized_count += 1

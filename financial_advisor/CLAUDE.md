@@ -72,6 +72,8 @@ All Docker runs use `--network=none`. The financials directory is mounted as `/r
 
 Each transaction is SHA256-hashed from `"{date}|{account}|{description}|{amount}"`, truncated to 8 hex chars. IDs are stable across re-runs and used as keys in annotations, discrepancy exceptions, and improvements.
 
+**Always cite the 8-char ID when referring to any specific transaction** — in tables, in prose, in commit messages, anywhere. A statement like "the 4 000 kr loan repayment" is not actionable; "`cabf4721` (4 000 kr loan repayment)" is. This applies in both directions: include the ID in every transaction row of every report or ad-hoc table, and reference the ID inline when discussing a transaction in conversation.
+
 ## SEB data quirks
 
 - Outgoing transfers: description field contains the **destination account number** — resolved to a display name via `accounts.json`

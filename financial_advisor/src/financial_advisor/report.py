@@ -7,10 +7,12 @@ from collections import defaultdict
 from datetime import date, datetime
 from pathlib import Path
 
+import yaml
+
 REPORTS_DIR = Path("/reports")
 CATEGORIZED_FILE = REPORTS_DIR / "categorized_transactions.json"
 CATEGORIES_FILE = REPORTS_DIR / "categories.json"
-ACCOUNTS_FILE = REPORTS_DIR / "accounts.json"
+ACCOUNTS_FILE = REPORTS_DIR / "accounts.yaml"
 
 # Excluded from income/expense analysis — money moving between accounts
 TRANSFER_CATEGORIES = {"Internal transfers", "Swish transfers", "Family transfers"}
@@ -53,6 +55,51 @@ def resolve_account(description: str, account_map: dict[str, str]) -> str:
     return account_map.get(key, description)
 
 
+def build_transfer_pairs(all_transfers: list[dict], account_map: dict[str, str]) -> dict[str, dict]:
+    """Pair outgoing transfers with their incoming counterparts.
+
+    SEB shows the destination account number on outgoing transfers but only the sender's
+    personal name on incoming transfers. To correctly attribute the source on the receiving
+    side, we match outgoing → incoming by (date, abs_amount, destination_account).
+    """
+    incoming_index: dict[tuple, list[dict]] = defaultdict(list)
+    for tx in all_transfers:
+        if tx["amount"] >= 0:
+            incoming_index[(tx["date"], abs(tx["amount"]), tx["account"])].append(tx)
+
+    pairs: dict[str, dict] = {}
+    for tx in all_transfers:
+        if tx["amount"] >= 0:
+            continue
+        destination = resolve_account(tx["merchant"], account_map)
+        if destination == tx["merchant"]:
+            continue
+        candidates = incoming_index.get((tx["date"], abs(tx["amount"]), destination), [])
+        if candidates:
+            pair = candidates.pop(0)
+            pairs[pair["id"]] = tx
+            pairs[tx["id"]] = pair
+
+    # Second pass: pair remaining transfers where both sides share a freehand
+    # description (e.g. "MAT", "LÅN", "MEDICINERCEL"). Match on (date, abs_amount,
+    # merchant) with opposite signs across different accounts.
+    by_desc: dict[tuple, list[dict]] = defaultdict(list)
+    for tx in all_transfers:
+        if tx["id"] in pairs:
+            continue
+        by_desc[(tx["date"], abs(tx["amount"]), tx["merchant"])].append(tx)
+    for group in by_desc.values():
+        positives = [t for t in group if t["amount"] >= 0]
+        negatives = [t for t in group if t["amount"] < 0]
+        for pos in positives:
+            match = next((n for n in negatives if n["account"] != pos["account"] and n["id"] not in pairs), None)
+            if match:
+                pairs[pos["id"]] = match
+                pairs[match["id"]] = pos
+
+    return pairs
+
+
 def main():
     if not CATEGORIZED_FILE.exists():
         print(f"ERROR: {CATEGORIZED_FILE} not found — run 'make categorize' first.", file=sys.stderr)
@@ -82,7 +129,15 @@ def main():
     exceptions: dict[str, dict] = {e["id"]: e for e in cats_data.get("discrepancy_exceptions", [])}
     excepted_ids: set[str] = set(exceptions)
 
-    account_map: dict[str, str] = json.loads(ACCOUNTS_FILE.read_text()) if ACCOUNTS_FILE.exists() else {}
+    accounts_raw: dict = yaml.safe_load(ACCOUNTS_FILE.read_text()) if ACCOUNTS_FILE.exists() else {}
+    account_map: dict[str, str] = {
+        key: entry["name"] if isinstance(entry, dict) else entry
+        for section in ("household", "external")
+        for key, entry in accounts_raw.get(section, {}).items()
+    }
+    for entry in accounts_raw.get("household", {}).values():
+        if isinstance(entry, dict) and entry.get("swish_alias"):
+            account_map[entry["swish_alias"]] = entry["name"]
 
     def super_cat(category: str) -> str:
         return super_map.get(category, category)
@@ -438,14 +493,16 @@ def main():
 
     # Transfers section — excluded from budget, shown for reference
     transfer_header = ["| ID | Date | Source | Destination | Category | SEK | Documentation |", "|---|---|---|---|---|---|---|"]
+    transfer_pairs = build_transfer_pairs(all_transfers, account_map)
 
     def transfer_row(tx: dict) -> str:
+        pair = transfer_pairs.get(tx["id"])
         if tx["amount"] >= 0:
-            source = resolve_account(tx["merchant"], account_map)
+            source = pair["account"] if pair else resolve_account(tx["merchant"], account_map)
             destination = tx["account"]
         else:
             source = tx["account"]
-            destination = resolve_account(tx["merchant"], account_map)
+            destination = pair["account"] if pair else resolve_account(tx["merchant"], account_map)
         sign = "" if tx["amount"] >= 0 else "−"
         tx_id = tx.get("id", "")
         exc = exceptions.get(tx_id)

@@ -1,3 +1,23 @@
+## 20260510 — April reconciliation closes; accounts.yaml + rule cleanup
+
+**Type of work:** debugging, configuration, writing
+**Repos touched:** aisafe/projects
+
+**Session highlights:**
+- Switched accounts metadata from JSON to YAML for editable multi-line descriptions; added PyYAML to pyproject; updated categorize.py + report.py to yaml.safe_load
+- Reshaped account model: Petra moved from household to external; identified four external Swish counterparts (Linnea, Ella, Johanna, Malin); added swish_alias mechanism so phone numbers are metadata on the account, not separate entries
+- Tightened categorization rules to match accounts.yaml: date-bounded historical mortgage rules, blanket pre-2024 LÅN → Internal, specific Family-transfer rules for known external account numbers, kept "467" Swish as catch-all
+- Closed April 2026 reconciliation to the öre: tracked +1 319 kr = budget +27 181 kr − 25 862 kr leakage to non-tracked counterparts; documented the deliberate Ulf Personal split categorization
+
+**Significant learnings:**
+- SEB transaction exports are in reverse-chronological order (newest first) — opening balance must be derived from the OLDEST April tx in the list, not the last position; verified via SEB portal screenshot
+- Swish is a payment method, not a relationship indicator — categorization rules should default to "Swish transfers" and only annotate specific transactions when purpose is known; family-transfer rules belong on direct bank transfers (account numbers), not on Swish phone numbers
+- Tracing a chain of transactions by description alone (MEDICINERCEL → Hampus refill → uffe hus → Ella reimbursement) is faster than annotating each leg in isolation; a single economic event can span four transactions across two days
+
+**Pick up next time:** Reconcile May 2026 — first month with the new MAT routing (lön → Matvecka), so the new annotation gets its first real test
+
+---
+
 ## 20260509 — Financial advisor pipeline: full build + security review
 
 **Type of work:** coding, configuration, debugging
