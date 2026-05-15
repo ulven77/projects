@@ -18,6 +18,78 @@ ACCOUNTS_FILE = REPORTS_DIR / "accounts.yaml"
 TRANSFER_CATEGORIES = {"Internal transfers", "Swish transfers", "Family transfers"}
 INCOME_CATEGORIES = {"Salary", "Tax refund", "Children & allowances", "Study allowance", "Interest"}
 
+# Swedish translations for display. Categories.json stays English (data layer).
+CATEGORY_SV = {
+    "Alcohol": "Alkohol",
+    "Caravan": "Husvagn",
+    "Caravan loan": "Husvagnslån",
+    "Cash & manual": "Kontant & manuellt",
+    "Children & allowances": "Barnbidrag & bidrag",
+    "Clothing": "Kläder",
+    "Donations": "Donationer",
+    "Entertainment": "Underhållning",
+    "Family transfers": "Familjeöverföringar",
+    "Fuel": "Bränsle",
+    "Groceries": "Livsmedel",
+    "Hardware & tools": "Verktyg & järnvaror",
+    "Healthcare": "Hälsovård",
+    "Home & furniture": "Hem & möbler",
+    "Housing": "Boende",
+    "Insurance": "Försäkring",
+    "Interest": "Ränta",
+    "Internal transfers": "Interna överföringar",
+    "Investments": "Investeringar",
+    "Loan payments": "Lånebetalningar",
+    "Needs review": "Behöver granskas",
+    "Online shopping": "Näthandel",
+    "Parking": "Parkering",
+    "Petra Personal": "Petra personligt",
+    "Pets": "Husdjur",
+    "Restaurants": "Restauranger",
+    "Salary": "Lön",
+    "Sports & fitness": "Sport & träning",
+    "Study allowance": "Studiebidrag",
+    "Subscriptions": "Abonnemang",
+    "Swish transfers": "Swish-överföringar",
+    "Tax refund": "Skatteåterbäring",
+    "Telecom & streaming": "Telefoni & streaming",
+    "Transport": "Kollektivtrafik",
+    "Ulf Personal": "Ulf personligt",
+    "Uncategorized": "Okategoriserad",
+    "Union fees": "Fackavgifter",
+    "Utilities": "El & avgifter",
+    "Vehicle costs": "Fordonskostnader",
+}
+
+THEME_SV = {
+    "Housing": "Boende",
+    "Transport": "Transport",
+    "Vehicles": "Fordon",
+    "Food & groceries": "Mat & livsmedel",
+    "Allowance": "Fickpeng",
+}
+
+MONTH_SV = [
+    "januari", "februari", "mars", "april", "maj", "juni",
+    "juli", "augusti", "september", "oktober", "november", "december",
+]
+
+
+def sv_cat(name: str) -> str:
+    return CATEGORY_SV.get(name, name)
+
+
+def sv_theme(name: str) -> str:
+    """Translate a theme name. Falls back to the category translation if the theme
+    is also a leaf category (categories without a super_categories mapping)."""
+    if name in THEME_SV:
+        return THEME_SV[name]
+    return CATEGORY_SV.get(name, name)
+
+
+def sv_month(year: int, month: int) -> str:
+    return f"{MONTH_SV[month - 1]} {year}"
+
 
 def fmt(amount: float) -> str:
     """Format as Swedish-style SEK amount: '23 527 kr'."""
@@ -42,11 +114,11 @@ def slug(text: str) -> str:
 
 
 def theme_link(theme: str) -> str:
-    return f"[{theme}](#theme-{slug(theme)})"
+    return f"[{sv_theme(theme)}](#theme-{slug(theme)})"
 
 
 def cat_link(cat: str) -> str:
-    return f"[{cat}](#cat-{slug(cat)})"
+    return f"[{sv_cat(cat)}](#cat-{slug(cat)})"
 
 
 def resolve_account(description: str, account_map: dict[str, str]) -> str:
@@ -116,7 +188,7 @@ def main():
         report_year, report_month = last_complete_month()
 
     month_label = f"{report_year}-{report_month:02d}"
-    month_name = datetime(report_year, report_month, 1).strftime("%B %Y")
+    month_name = sv_month(report_year, report_month)
 
     accounts = json.loads(CATEGORIZED_FILE.read_text())
 
@@ -223,7 +295,7 @@ def main():
             f"| {theme_link(tx['super_category'])} | {cat_link(tx['category'])} | {sign}{fmt(tx['amount'])} |"
         )
 
-    tx_header = ["| ID | Date | Account | Description | Theme | Category | SEK |", "|---|---|---|---|---|---|---|"]
+    tx_header = ["| ID | Datum | Konto | Beskrivning | Tema | Kategori | SEK |", "|---|---|---|---|---|---|---|"]
 
     # Compute discrepancies before building output
     discrepancies: list[dict] = []
@@ -258,7 +330,7 @@ def main():
         if tx["category"] == "Uncategorized":
             discrepancies.append({
                 "kind": "uncategorized",
-                "rule": "Uncategorized transaction",
+                "rule": "Okategoriserad transaktion",
                 "detail": "",
                 "id": tx.get("id", ""),
                 "date": tx["date"],
@@ -266,6 +338,20 @@ def main():
                 "account": tx["account"],
                 "amount": tx["amount"],
             })
+
+    # Fail-fast: a month with zero income is almost always a data problem
+    # (missing salary import) rather than a real "no salary" month.
+    if total_income == 0:
+        discrepancies.append({
+            "kind": "zero_income",
+            "rule": "Inga inkomster registrerade",
+            "detail": (
+                "Inkomster för månaden summerar till 0 kr. Detta är nästan alltid ett tecken på "
+                "att lönefilen inte är inläst — kontrollera ~/financials/data/."
+            ),
+            "id": "",
+            "date": f"{report_year}-{report_month:02d}",
+        })
 
     for limit in monthly_limits:
         cat = limit["category"]
@@ -287,39 +373,44 @@ def main():
 
     out = [f"# Budget — {month_name}", ""]
 
-    # Discrepancies section — shown at the top so problems are visible immediately
+    # Avvikelser — visas högst upp så problem syns direkt
     if discrepancies:
-        out += [f"## Discrepancies — {len(discrepancies)} issue(s)", ""]
+        out += [f"## Avvikelser — {len(discrepancies)} problem", ""]
+        zero_income = [d for d in discrepancies if d["kind"] == "zero_income"]
         unexpected = [d for d in discrepancies if d["kind"] == "unexpected_transfer"]
         uncategorized = [d for d in discrepancies if d["kind"] == "uncategorized"]
+        if zero_income:
+            out += ["### Inga inkomster registrerade", ""]
+            for d in zero_income:
+                out += [f"⚠ **{d['rule']}** — {d['detail']}", ""]
         if unexpected:
-            out += ["### Unexpected transfers", ""]
+            out += ["### Oväntade överföringar", ""]
             grouped: dict[str, list] = defaultdict(list)
             for d in unexpected:
                 grouped[d["rule"]].append(d)
             for rule_name, items in grouped.items():
                 rule_detail = items[0]["detail"]
                 out += [f"**{rule_name}** — *{rule_detail}*", ""]
-                out += ["| ID | Date | Source | Destination | SEK |", "|---|---|---|---|---|"]
+                out += ["| ID | Datum | Källa | Mottagare | SEK |", "|---|---|---|---|---|"]
                 for d in sorted(items, key=lambda x: x["date"]):
                     sign = "−" if d["amount"] < 0 else ""
                     out.append(f"| `{d['id']}` | {d['date']} | {d['source']} | {d['destination']} | {sign}{fmt(d['amount'])} |")
                 out.append("")
         if uncategorized:
-            out += ["### Uncategorized transactions", ""]
-            out += ["| ID | Date | Account | Merchant | SEK |", "|---|---|---|---|---|"]
+            out += ["### Okategoriserade transaktioner", ""]
+            out += ["| ID | Datum | Konto | Beskrivning | SEK |", "|---|---|---|---|---|"]
             for d in sorted(uncategorized, key=lambda x: x["date"]):
                 sign = "−" if d["amount"] < 0 else ""
                 out.append(f"| `{d['id']}` | {d['date']} | {d['account']} | {d['merchant']} | {sign}{fmt(d['amount'])} |")
             out.append("")
         limits_exceeded = [d for d in discrepancies if d["kind"] == "limit_exceeded"]
         if limits_exceeded:
-            out += ["### Monthly limits exceeded", ""]
+            out += ["### Månadsgränser överskridna", ""]
             for d in limits_exceeded:
                 out += [
                     f"**{d['rule']}** — *{d['detail']}*",
                     "",
-                    f"Limit: {fmt(d['max'])} · Actual: {fmt(d['actual'])} · Over by {fmt(d['overage'])}",
+                    f"Gräns: {fmt(d['max'])} · Faktiskt: {fmt(d['actual'])} · Över med {fmt(d['overage'])}",
                     "",
                 ]
                 out += tx_header
@@ -327,12 +418,45 @@ def main():
                     out.append(tx_row(tx))
                 out.append("")
     else:
-        out += ["## Discrepancies", "", "*No issues found.*", ""]
+        out += ["## Avvikelser", "", "*Inga avvikelser hittades.*", ""]
 
-    # Improvements section
+    # Översikt — siffrorna högst upp så månadens läge syns direkt
+    net_prefix = "+" if net >= 0 else "−"
+    transfer_leakage = sum(tx["amount"] for tx in all_transfers)
+    # Reconciliation identity: tracked accounts change = budget net + transfer leakage to non-tracked counterparts.
+    tracked_change = net + transfer_leakage
+    out += [
+        "## Översikt",
+        "",
+        "| | SEK |",
+        "|---|---|",
+        f"| Inkomst | {fmt(total_income)} |",
+        f"| Utgifter | −{fmt(total_expenses)} |",
+        f"| **Netto (budget)** | **{net_prefix}{fmt(net)}** |",
+        f"| Överföringsläckage till externa motparter | {('+' if transfer_leakage >= 0 else '−')}{fmt(transfer_leakage)} |",
+        f"| **= Förändring spårade konton** | **{('+' if tracked_change >= 0 else '−')}{fmt(tracked_change)}** |",
+        "",
+        "*Avstämningsidentitet: spårad balansförändring = budgetnetto + nettoöverföringar till/från icke-spårade konton (Petra personal, externa Swish-motparter etc.).*",
+        "",
+    ]
+
+    # Navigationsindex — top themes
+    if ordered_themes:
+        top_themes = sorted(super_expenses.items(), key=lambda x: x[1])[:5]
+        out += ["**Topp 5 teman:**", "", "| Tema | SEK | Andel |", "|---|---|---|"]
+        for theme, amt in top_themes:
+            pct = abs(amt) / abs(total_expenses) * 100 if total_expenses else 0
+            out.append(f"| {theme_link(theme)} | −{fmt(amt)} | {pct:.1f}% |")
+        out.append("")
+
+    # Förbättringar — checklist, men fördröjt med <details> så det inte tar förstaskärmen
     if improvements:
         tx_by_id = {tx["id"]: tx for tx in all_transactions + all_transfers if tx.get("id")}
-        out += ["## Improvements", ""]
+        out += [
+            "<details>",
+            f"<summary><strong>Förbättringar — {len(improvements)} att åtgärda</strong></summary>",
+            "",
+        ]
         for item in improvements:
             tx = tx_by_id.get(item["id"])
             if tx:
@@ -343,81 +467,58 @@ def main():
                 )
             else:
                 out.append(f"- [ ] **{item['action']}** — `{item['id']}`")
-        out.append("")
-
-    # Overview table
-    net_prefix = "+" if net >= 0 else "−"
-    out += [
-        "## Overview",
-        "",
-        "| | SEK |",
-        "|---|---|",
-        f"| Income | {fmt(total_income)} |",
-        f"| Expenses | −{fmt(total_expenses)} |",
-        f"| **Net** | **{net_prefix}{fmt(net)}** |",
-        "",
-    ]
-
-    # Navigation index — themes
-    if ordered_themes:
-        theme_links = " · ".join(theme_link(t) for t in ordered_themes)
-        out += [f"**Themes:** {theme_links}", ""]
-
-    # Navigation index — categories
-    if ordered_cats:
-        cat_links = " · ".join(cat_link(c) for c in ordered_cats)
-        out += [f"**Categories:** {cat_links}", ""]
+        out += ["", "</details>", ""]
 
     # Zoomed-out: super-category chart + table
     sorted_super = sorted(super_expenses.items(), key=lambda x: x[1])
     if sorted_super:
-        out += ["## Expenses by theme", "", "```mermaid", f'pie title Expenses by theme — {month_name}']
+        out += ["## Utgifter per tema", "", "```mermaid", f'pie title Utgifter per tema — {month_name}']
         for cat, amt in sorted_super:
-            out.append(f'    "{cat.replace(chr(34), chr(39))}" : {abs(amt):.2f}')
+            out.append(f'    "{sv_theme(cat).replace(chr(34), chr(39))}" : {abs(amt):.2f}')
         out += ["```", ""]
-        out += ["| Theme | SEK | % |", "|---|---|---|"]
+        out += ["| Tema | SEK | % |", "|---|---|---|"]
         for cat, amt in sorted_super:
             pct = abs(amt) / abs(total_expenses) * 100 if total_expenses else 0
             out.append(f"| {theme_link(cat)} | −{fmt(amt)} | {pct:.1f}% |")
-        out += [f"| **Total** | **−{fmt(total_expenses)}** | |", ""]
+        out += [f"| **Totalt** | **−{fmt(total_expenses)}** | |", ""]
 
     # Detailed: per-category chart + table
     if sorted_expenses:
-        out += ["## Expenses by category", "", "```mermaid", f'pie title Expenses — {month_name}']
+        out += ["## Utgifter per kategori", "", "```mermaid", f'pie title Utgifter — {month_name}']
         for cat, amt in sorted_expenses[:12]:
-            out.append(f'    "{cat.replace(chr(34), chr(39))}" : {abs(amt):.2f}')
+            out.append(f'    "{sv_cat(cat).replace(chr(34), chr(39))}" : {abs(amt):.2f}')
         out += ["```", ""]
 
     # Expense breakdown table
-    out += ["## Category breakdown", "", "| Category | Theme | SEK | % |", "|---|---|---|---|"]
+    out += ["## Kategoriuppdelning", "", "| Kategori | Tema | SEK | % |", "|---|---|---|---|"]
     for cat, amt in sorted_expenses:
         pct = abs(amt) / abs(total_expenses) * 100 if total_expenses else 0
         out.append(f"| {cat_link(cat)} | {theme_link(super_cat(cat))} | −{fmt(amt)} | {pct:.1f}% |")
-    out += [f"| **Total** | | **−{fmt(total_expenses)}** | |", ""]
+    out += [f"| **Totalt** | | **−{fmt(total_expenses)}** | |", ""]
 
     # Income breakdown table
     if sorted_income:
-        out += ["## Income breakdown", "", "| Category | SEK |", "|---|---|"]
+        out += ["## Inkomstuppdelning", "", "| Kategori | SEK |", "|---|---|"]
         for cat, amt in sorted_income:
-            out.append(f"| {cat} | {fmt(amt)} |")
-        out += [f"| **Total** | **{fmt(total_income)}** |", ""]
+            out.append(f"| {sv_cat(cat)} | {fmt(amt)} |")
+        out += [f"| **Totalt** | **{fmt(total_income)}** |", ""]
 
     # Per-account section
-    out += ["## Per account", ""]
+    out += ["## Per konto", ""]
     for acc in account_summaries:
         if not any([acc["income"], acc["expenses"], acc["transfers"]]):
             continue
         out.append(f"### {account_link(acc['name'])}")
         out += ["", "| | SEK |", "|---|---|"]
         if acc["income"]:
-            out.append(f"| Income | {fmt(acc['income'])} |")
+            out.append(f"| Inkomst | {fmt(acc['income'])} |")
         if acc["expenses"]:
-            out.append(f"| Expenses | −{fmt(abs(acc['expenses']))} |")
+            out.append(f"| Utgifter | −{fmt(abs(acc['expenses']))} |")
         if acc["transfers"]:
-            label = "Transfers in" if acc["transfers"] >= 0 else "Transfers out"
+            label = "Överföringar in" if acc["transfers"] >= 0 else "Överföringar ut"
             out.append(f"| {label} | {fmt(acc['transfers'])} |")
         if acc["categories"]:
-            out += ["", "| Category | SEK |", "|---|---|"]
+            out += ["", "| Kategori | SEK |", "|---|---|"]
             for cat, amt in sorted(acc["categories"].items(), key=lambda x: x[1]):
                 out.append(f"| {cat_link(cat)} | −{fmt(abs(amt))} |")
         out.append("")
@@ -425,18 +526,18 @@ def main():
     def tx_total_row(group: list[dict]) -> str:
         total = sum(tx["amount"] for tx in group)
         sign = "−" if total < 0 else ("+" if total > 0 else "")
-        return f"| | | | | | **Total** | **{sign}{fmt(total)}** |"
+        return f"| | | | | | **Totalt** | **{sign}{fmt(total)}** |"
 
     # All transactions — by date (budget + transfers combined, sorted by date)
     all_combined = sorted(all_transactions + all_transfers, key=lambda x: x["date"])
-    out += ["## All transactions — by date", ""] + tx_header
+    out += ["## Alla transaktioner — efter datum", ""] + tx_header
     for tx in all_combined:
         out.append(tx_row(tx))
     out.append(tx_total_row(all_combined))
     out.append("")
 
     # Full bank statements per account
-    out += ["## Accounts", ""]
+    out += ["## Konton", ""]
     for acc_data in accounts:
         acc_name = acc_data.get("account") or ""
         month_txs = [
@@ -450,13 +551,13 @@ def main():
         anchor = f'<a id="account-{slug(acc_name)}"></a>'
         out += [anchor, f"### {acc_name}", ""]
         if has_balance:
-            out += ["| ID | Date | Description | Category | SEK | Balance |", "|---|---|---|---|---|---|"]
+            out += ["| ID | Datum | Beskrivning | Kategori | SEK | Saldo |", "|---|---|---|---|---|---|"]
         else:
-            out += ["| ID | Date | Description | Category | SEK |", "|---|---|---|---|---|"]
+            out += ["| ID | Datum | Beskrivning | Kategori | SEK |", "|---|---|---|---|---|"]
         for tx in month_txs:
             amt = tx.get("amount") or 0.0
             sign = "−" if amt < 0 else ""
-            cat = tx.get("category", "Uncategorized")
+            cat = sv_cat(tx.get("category", "Uncategorized"))
             desc = tx.get("merchant") or tx.get("description", "")
             tx_id = tx.get("id", "")
             if has_balance:
@@ -468,31 +569,36 @@ def main():
         out.append("")
 
     # All transactions — by theme (one subsection per theme, each with its own anchor)
-    out += ["## All transactions — by theme", ""]
+    out += ["## Alla transaktioner — efter tema", ""]
     for theme in sorted(set(tx["super_category"] for tx in all_transactions)):
         anchor = f'<a id="theme-{slug(theme)}"></a>'
         group = [tx for tx in all_transactions if tx["super_category"] == theme]
         group.sort(key=lambda x: (x["merchant"], x["date"]))
-        out += [anchor, f"### Theme: {theme}", ""] + tx_header
+        out += [anchor, f"### Tema: {sv_theme(theme)}", ""] + tx_header
         for tx in group:
             out.append(tx_row(tx))
         out.append(tx_total_row(group))
         out.append("")
 
-    # All transactions — by category (one subsection per category, each with its own anchor)
-    out += ["## All transactions — by category", ""]
+    # All transactions — by category (collapsed under <details>; redundant view of the same data)
+    out += [
+        "<details>",
+        "<summary><strong>Alla transaktioner — efter kategori</strong></summary>",
+        "",
+    ]
     for cat in sorted(set(tx["category"] for tx in all_transactions)):
         anchor = f'<a id="cat-{slug(cat)}"></a>'
         group = [tx for tx in all_transactions if tx["category"] == cat]
         group.sort(key=lambda x: (x["merchant"], x["date"]))
-        out += [anchor, f"### Category: {cat}", ""] + tx_header
+        out += [anchor, f"#### Kategori: {sv_cat(cat)}", ""] + tx_header
         for tx in group:
             out.append(tx_row(tx))
         out.append(tx_total_row(group))
         out.append("")
+    out += ["</details>", ""]
 
     # Transfers section — excluded from budget, shown for reference
-    transfer_header = ["| ID | Date | Source | Destination | Category | SEK | Documentation |", "|---|---|---|---|---|---|---|"]
+    transfer_header = ["| ID | Datum | Källa | Mottagare | Kategori | SEK | Dokumentation |", "|---|---|---|---|---|---|---|"]
     transfer_pairs = build_transfer_pairs(all_transfers, account_map)
 
     def transfer_row(tx: dict) -> str:
@@ -511,7 +617,7 @@ def main():
         dst_display = account_link(destination) if "(" in destination else destination
         return (
             f"| `{tx_id}` | {tx['date']} | {src_display} | {dst_display} "
-            f"| {tx['category']} | {sign}{fmt(tx['amount'])} | {doc} |"
+            f"| {sv_cat(tx['category'])} | {sign}{fmt(tx['amount'])} | {doc} |"
         )
 
     def transfer_total_row(group: list[dict]) -> str:
@@ -520,18 +626,18 @@ def main():
         return f"| | | | | | **{sign}{fmt(total)}** | |"
 
     if all_transfers:
-        out += ["## Transfers", "*(excluded from budget)*", ""]
+        out += ["## Överföringar", "*(utesluts från budgeten)*", ""]
         for cat in sorted(set(tx["category"] for tx in all_transfers)):
             anchor = f'<a id="transfer-{slug(cat)}"></a>'
             group = [tx for tx in all_transfers if tx["category"] == cat]
             group.sort(key=lambda x: x["date"])
-            out += [anchor, f"### {cat}", ""] + transfer_header
+            out += [anchor, f"### {sv_cat(cat)}", ""] + transfer_header
             for tx in group:
                 out.append(transfer_row(tx))
             out.append(transfer_total_row(group))
             out.append("")
 
-    out += ["---", f"*Generated {date.today()} · {len(accounts)} accounts*"]
+    out += ["---", f"*Genererad {date.today()} · {len(accounts)} konton*"]
 
     output_file = REPORTS_DIR / f"{month_label}_budget.md"
     output_file.write_text("\n".join(out), encoding="utf-8")

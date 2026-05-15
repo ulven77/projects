@@ -53,7 +53,7 @@ def load_accounts() -> set[str]:
     return keys
 
 
-_DIGITS_RE = re.compile(r"\D")
+_NON_DIGITS_RE = re.compile(r"\D")  # used to strip everything except digits
 
 
 def find_category(tx: dict, account_name: str, rules: list[dict], known_accounts: set[str] = frozenset()) -> str | None:
@@ -78,7 +78,7 @@ def find_category(tx: dict, account_name: str, rules: list[dict], known_accounts
     # Description is a known account number → always an internal transfer.
     # SEB populates outgoing transfer descriptions with the destination account number,
     # making this a reliable machine-generated signal that should not be overridden by keywords.
-    if known_accounts and _DIGITS_RE.sub("", desc) in known_accounts:
+    if known_accounts and _NON_DIGITS_RE.sub("", desc) in known_accounts:
         return "Internal transfers"
 
     for rule in rules:
@@ -99,15 +99,25 @@ def find_category(tx: dict, account_name: str, rules: list[dict], known_accounts
 
 
 def find_annotation(tx: dict, account_name: str, annotations: list[dict]) -> str | None:
-    """Return a category override if an annotation matches this exact transaction."""
+    """Return a category override if an annotation matches this transaction.
+
+    Match fields (all optional, AND logic): description, date, amount, account_contains,
+    date_from, date_to. Use date_from/date_to instead of free-form notes when the same
+    description applies to different sources before vs. after a cutoff date.
+    """
+    tx_date = tx.get("date", "")[:10]
     for ann in annotations:
         if ann.get("description") and ann["description"] != tx.get("description", ""):
             continue
-        if ann.get("date") and ann["date"] != tx["date"]:
+        if ann.get("date") and ann["date"] != tx_date:
             continue
         if ann.get("amount") is not None and abs(ann["amount"] - (tx.get("amount") or 0)) > 0.01:
             continue
         if ann.get("account_contains") and ann["account_contains"].lower() not in account_name.lower():
+            continue
+        if ann.get("date_from") and tx_date < ann["date_from"]:
+            continue
+        if ann.get("date_to") and tx_date > ann["date_to"]:
             continue
         return ann["category"]
     return None

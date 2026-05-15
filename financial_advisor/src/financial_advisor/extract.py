@@ -29,7 +29,15 @@ def _tx_hash(account: str, date: str, description: str, amount: float | None) ->
 
 
 def _parse_swedish_number(s: str) -> float:
-    return float(s.replace(" ", "").replace(" ", "").replace(",", "."))
+    #   = non-breaking space (SEB exports),   = thin space (rare), " " = regular space.
+    return float(s.replace(" ", "").replace(" ", "").replace(" ", "").replace(",", "."))
+
+
+def _normalize_date(value) -> str:
+    """Return YYYY-MM-DD regardless of whether openpyxl gave us a datetime or a string."""
+    if hasattr(value, "strftime"):
+        return value.strftime("%Y-%m-%d")
+    return str(value)[:10]
 
 
 def parse_excel(path: Path) -> dict:
@@ -60,13 +68,14 @@ def parse_excel(path: Path) -> dict:
         try:
             transactions.append(
                 {
-                    "date": str(row[0]),
+                    "date": _normalize_date(row[0]),
                     "description": str(row[3]).strip() if row[3] else "",
                     "amount": float(row[4]) if row[4] is not None else None,
                     "balance": float(row[5]) if row[5] is not None else None,
                 }
             )
-        except (TypeError, ValueError, IndexError):
+        except (TypeError, ValueError, IndexError) as exc:
+            print(f"  WARNING: skipping malformed row in {path.name}: {row!r} ({exc})", file=sys.stderr)
             continue
 
     for tx in transactions:
@@ -129,10 +138,14 @@ def parse_pdf(path: Path) -> dict:
 
 
 def extract_all() -> list[dict]:
-    results = []
-    seen_accounts: dict[str, str] = {}
+    """Parse every xlsx/pdf in DATA_DIR. When two files cover the same account,
+    keep the newest by mtime and warn loudly about the older one."""
+    results: dict[str, dict] = {}  # account -> result
+    sources: dict[str, Path] = {}  # account -> path of the winning file
 
-    for path in sorted(DATA_DIR.iterdir()):
+    # Iterate newest first so the first file we see per account wins.
+    paths = sorted(DATA_DIR.iterdir(), key=lambda p: p.stat().st_mtime, reverse=True)
+    for path in paths:
         if path.suffix.lower() == ".xlsx":
             result = parse_excel(path)
         elif path.suffix.lower() == ".pdf":
@@ -142,22 +155,22 @@ def extract_all() -> list[dict]:
             continue
 
         account = result.get("account") or path.name
-        if account in seen_accounts:
+        if account in results:
             print(
-                f"WARNING: duplicate account '{account}' in {path.name} "
-                f"(already seen in {seen_accounts[account]}) — skipping",
+                f"WARNING: duplicate export for '{account}' — keeping newer {sources[account].name}, "
+                f"discarding older {path.name}",
                 file=sys.stderr,
             )
             continue
 
-        seen_accounts[account] = path.name
+        sources[account] = path
+        results[account] = result
         print(
             f"  {path.name}: {account} — {len(result['transactions'])} transactions",
             file=sys.stderr,
         )
-        results.append(result)
 
-    return results
+    return list(results.values())
 
 
 def main():
