@@ -52,21 +52,25 @@ All Docker runs use `--network=none`. The financials directory is mounted as `/r
   # RULES.md lives in ~/financials/ (private, not in repo)
 ```
 
+## Report language
+
+Report output is **Swedish**. All section headings, table column names, month names, and category/theme labels render in Swedish. The data layer (JSON keys, Python variables, category names in rules) remains English. Translation lives in `report.py`: `CATEGORY_SV`, `THEME_SV`, `MONTH_SV` dicts; `sv_cat()`, `sv_theme()`, `sv_month()` helpers.
+
 ## Report sections (in order)
 
-1. **Discrepancies** — flow rule violations, monthly limit overruns, uncategorized transactions
-2. **Improvements** — checkbox action list driven by `categories.json`
-3. **Overview** — income / expenses / net
-4. **Expenses by theme** — Mermaid pie + table
-5. **Expenses by category** — Mermaid pie + table
-6. **Category breakdown** — full table with % share
-7. **Income breakdown**
-8. **Per account** — summary per account with category split
-9. **All transactions — by date** — all budget transactions chronologically
-10. **Accounts** — full bank statement per account (with running balance + SHA ID)
-11. **All transactions — by theme** — grouped, sorted by merchant then date
-12. **All transactions — by category** — grouped, sorted by merchant then date
-13. **Transfers** — internal/family/swish transfers excluded from budget, with Source → Destination columns and Documentation links
+1. **Avvikelser** — flow rule violations, monthly limit overruns, uncategorized transactions; income-zero fail-fast fires here if total_income == 0
+2. **Förbättringar** — checkbox action list driven by `categories.json`, wrapped in `<details>`
+3. **Översikt** — income / expenses / net + reconciliation row: Netto (budget) + Överföringsläckage = Förändring spårade konton
+4. **Utgifter per tema** — top-5 table + Mermaid pie
+5. **Utgifter per kategori** — Mermaid pie + table
+6. **Kategoriöversikt** — full table with % share
+7. **Inkomster**
+8. **Per konto** — summary per account with category split
+9. **Alla transaktioner — datum** — all budget transactions chronologically
+10. **Konton** — full bank statement per account (with running balance + SHA ID)
+11. **Alla transaktioner — tema** — grouped, sorted by merchant then date, wrapped in `<details>`
+12. **Alla transaktioner — kategori** — grouped, sorted by merchant then date, wrapped in `<details>`
+13. **Överföringar** — internal/family/swish transfers excluded from budget, with Source → Destination columns and Documentation links
 
 ## Transaction IDs
 

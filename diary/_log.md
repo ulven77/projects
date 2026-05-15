@@ -1,3 +1,23 @@
+## 20260515 — Swedish reports, pipeline hardening, financial correctness pass
+
+**Type of work:** coding, debugging, writing
+**Repos touched:** aisafe/projects, aisafe/skills
+
+**Session highlights:**
+- Ran three parallel review agents (financial correctness, technical patterns, readability) across financial_advisor and ~/financials; actioned all findings in one pass
+- Added Swedish translation layer to report.py (CATEGORY_SV / THEME_SV / MONTH_SV dicts); all headings, columns, and month references now render in Swedish
+- Fixed SHA hash instability in extract.py: added _normalize_date() so xlsx datetime objects and PDF string dates produce identical hashes
+- Added income-zero fail-fast discrepancy to report.py; parking folded into MONTHLY_RECURRING to close ledger vs. vehicle-report gap
+- Added fleet cost-per-10km chart and <2% TCO slice grouping to generate_vehicle_charts.py
+
+**Significant learnings:**
+- When two data sources for the same account produce different hashes, the culprit is almost always date serialization — datetimes from openpyxl serialize differently than strings from pdftotext
+- Adding a cost to both the recurring total and the deposit in a ledger table is zero-sum: saldo rows don't shift, only the split between expense and savings changes
+
+**Pick up next time:** May 2026 reconciliation — salary import is missing (income-zero fires); verify MAT annotation date-boundary works correctly for lön account
+
+---
+
 ## 20260514 — Vehicle financial reality report: fleet model + burnup charts
 
 **Type of work:** coding, planning, research

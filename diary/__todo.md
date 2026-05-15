@@ -12,13 +12,13 @@ Fixed monthly set-aside amounts for irregular bills, so the household can see wh
     - Purpose of report is to follow-up spending on the big expenses by asset and expense type.
         - Assets
             - Cars (skills/commands/budget/assets/vehicle-financial-reality-metrics.md)
-                - RKN 218 (Volvo S80 / Car)
-                - PTJ 029 (Toyota Avensis / Car)
-                - MSA 52U (Kia E-soul / Car)
+                - ✓ RKN 218 (Volvo S80 / Car) — vehicles_report_2026.md complete
+                - ✓ PTJ 029 (Toyota Avensis / Car) — vehicles_report_2026.md complete
+                - ✓ MSA 52U (Kia E-soul / Car) — vehicles_report_2026.md complete
             - Caravan (See /home/uven/repos/aisafe/skills/commands/budget/assets/camper-financial-reality-metrics)
-                - 
+                - TODO: create camper report
             - House (see [text](../../skills/commands/budget/assets/housing-financial-reality-metrics.md))
-                - 
+                - TODO: create house report
         - Liabilities 
             - Loans without collateral (see /home/uven/repos/aisafe/skills/commands/budget/assets/Unsecured Loan Financial Reality Metrics.md)
         - Non-Assett/Loan related recurring costs (Basically quality of life services)
