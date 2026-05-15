@@ -18,7 +18,7 @@ Fixed monthly set-aside amounts for irregular bills, so the household can see wh
             - Caravan (See /home/uven/repos/aisafe/skills/commands/budget/assets/camper-financial-reality-metrics)
                 - ✓ KBH30Y (Adria Altea 502 UL / Husvagn) — caravan section in vehicles_report_2026.md · försäkring (Folksam 2 524 kr/år), lån (153 723 kr kvar @ 4,7 %), marknadsvärde (220 000 kr) och uppställning (egen tomt, 0 kr) bekräftade · återstår: faktiska reparations-/serviceutgifter (CARAVANHALLE/HUSVAGN FIX historik) för bättre underhållsschablon
             - House (see [text](../../skills/commands/budget/assets/housing-financial-reality-metrics.md))
-                - TODO: create house report
+                - ✓ Gnesta Frönäs 5:9 — `~/financials/housing-financial-reality-report-2026.sv.md` (17 sektioner, transaktions­spårbar, mermaid-pajdiagram, stress-tests). AGENT_INSTRUCTIONS.md i `~/financials/data/house/` håller konventioner och handover. Återstår: omsättning bolån 2026-05-28 (akut, risk #6), starta 5 000 kr/mån avsättning till Lysakonto 3, beställ VVS-provtryckning
         - Liabilities 
             - Loans without collateral (see /home/uven/repos/aisafe/skills/commands/budget/assets/Unsecured Loan Financial Reality Metrics.md)
         - Non-Assett/Loan related recurring costs (Basically quality of life services)
@@ -42,11 +42,23 @@ Fixed monthly set-aside amounts for irregular bills, so the household can see wh
 
 ## Shortterm goals (Max 3)
 
-**Asset report: House**
-Last remaining asset in M2-Step1. Use [housing-financial-reality-metrics](../../skills/commands/budget/assets/housing-financial-reality-metrics.md) framework. (Camper KBH30Y ✓ 2026-05-15b.)
-- Pull mortgage state from SEB (kapitalskuld, ränta, term)
-- Insurance + utilities + maintenance reserve
-- Generate house section parallel to vehicles_report_2026.md structure
+**Agentic categorization workflow** (on top of new DuckDB foundation)
+Systematic, audited reduction of Uncategorized 426 483 kr/12 mo using the `wb` workbench. Claude works through Uncategorized merchants in batches, proposes patterns, dry-runs, applies — every change leaves a `categorization_history` row.
+- Batch 1 — recurring large flows (SEB KORT, SANTANDER, WASA KREDIT, EUROCARD) — historical 2021–2024 consumer credit. Likely `Loan payments` or new `Credit card repayment` category. ~1 000 000 kr cumulative.
+- Batch 2 — recurring household transfers (56900725627 — 113 txs, 69 908 kr) — identify recipient (likely family member), route to `Internal transfers` or `Family transfers`.
+- Batch 3 — vehicle-related uncategorized (SERV. MSA52U 14 400, BILKÖP 21 000×2, KIA /IF SKADEFÖRSÄKRING 9 073) → `Vehicle costs` or asset-specific.
+- Batch 4 — house & solar (MÅLARE LARS AXELSSON 81 300, solceller fakturor) → `Housing` (already in housing report's underhållsskuld).
+- Batch 5 — gifts & one-offs (PRESENT ELLA, GULDSMEN, MOPPE LINNEA, RESA, DATOR UFFE) → new `Gifts & one-offs` category vs Entertainment.
+- Goal: Uncategorized < 100 000 kr/12 mo for the 12-mo window. Track via `wb summary` before/after.
+- Each batch ends with a populated `category_rules` row so re-categorization on new SEB imports is automatic.
+
+**Non-asset recurring services + consumption reports**
+✓ `~/financials/lifestyle-financial-reality-report-2026.sv.md` — 10 sektioner: löpande tjänster, mat, fickpeng, hälsovård/husdjur, engångshändelser, försäkringsavstämning, lån, hushållsverklighet. Charts: lifestyle_pie, recurring_services_pie, food_trend (12 mån). Inga osäkrade lån identifierade. Skript: `generate_lifestyle_charts.py`.
+- ✓ Klarna/Ecster 37 900 kr reklassificerad → `Klarna repayment` (64 txs, rule `klarna-2026-05-15`)
+- ✓ RKN218 bogus category → `Internal transfers` (20 txs, rule `rkn218-route-2026-05-15`)
+- ⚠ Identifiera 10× APPLE COM/BI per månad (App Store/iCloud/Apple One mix)
+- ⚠ Verifiera försäkringsallokering — PREMIE FÖRS. 22 178 kr och Trygg-Hansa 8 808 kr/år behöver mappning mot asset-rapporter
+- Säker årsbesparing från report §9: ~18 475 kr/år (Adobe + Storytel + Allente + STYRKEFABRIK)
 
 **Hermes: Categorize transactions and produce reproducible report (Step 4)**
 - Define keyword → category rules (HEMKOP → Groceries, TELIA → Telecom, etc.)

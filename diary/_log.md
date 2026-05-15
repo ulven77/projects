@@ -1,3 +1,29 @@
+## 20260515c — Lifestyle report + DuckDB cutover
+
+**Type of work:** coding, writing, devops, research
+**Repos touched:** ~/financials (lifestyle report, data/db/ DuckDB store, scripts), aisafe/projects (diary, __todo.md, financial_advisor/CLAUDE.md)
+
+**Session highlights:**
+- Wrote `~/financials/lifestyle-financial-reality-report-2026.sv.md` — 10 sektioner covering all five non-asset buckets in one consolidated report (recurring services, food, allowances, healthcare/pets, one-offs + insurance reconciliation + loans recap + total household reality). Includes three new PNG charts (lifestyle_pie, recurring_services_pie, food_trend_2026)
+- `generate_lifestyle_charts.py` added alongside vehicle/house generators
+- Identified data quality blockers: 484 278 kr Uncategorized/12 mo, ECSTER+K*KLARNA mislabeled as Online shopping, RKN218 category routing bug, Insurance allocation gap (~18 220 kr/yr unattributed between cars/house/caravan)
+- Designed and built DuckDB transaction store at `~/financials/data/db/`: schema.sql (tx + category_rules + categorization_history + improvements + 3 views), migrate_from_json.py importer, transaction_db.py helper module, workbench.py CLI, wb Docker wrapper
+- Migrated all 10 678 transactions (2021-05-10 → 2026-05-08) into transactions.duckdb
+- Applied first two cleanups through the new workbench end-to-end: ECSTER+K*KLARNA→`Klarna repayment` (64 txs, rule klarna-2026-05-15) and RKN218→Internal transfers (20 txs, rule rkn218-route-2026-05-15) — 84 audit rows in categorization_history
+- Installed DuckDB CLI locally at `~/.local/bin/duckdb` (single binary install) for ad-hoc reads
+- Updated financial_advisor/CLAUDE.md with new DuckDB store section: re-seed command, workbench reference, reclassification convention
+
+**Significant learnings:**
+- DuckDB beat the alternatives for this workload: file-based like JSON, SQL for analytics, JSON column type for raw row preservation, atomic UPDATEs for bulk reclassification. "Document database" was the user's framing but the workload (group-by-month, bulk reclass, multi-report reads) is analytical-first
+- SEB exports contain ~2.5 % true SHA collisions — same date/account/desc/amount transactions are legitimate (back-to-back transfers) but indistinguishable to `sha256("{date}|{account}|{desc}|{amount}")`. Fix: keep SHA as non-unique human reference, add `pk` auto-increment as real primary key. Preserves the "every row has an 8-char SHA" convention without lying about uniqueness
+- Docker user mapping (`-u $(id -u):$(id -g) ... -e HOME=/tmp`) is required when DuckDB files need to be readable by the host. Without it, the file is root-owned and `~/.local/bin/duckdb` gets EACCES
+- The reclassify workflow needs three things to be safe: parameterized WHERE, atomic UPDATE+history-write transaction, and a `--dry-run` mode. Workbench has all three; manual SQL UPDATEs would skip the audit row
+- "Document database" framing collapses two distinct needs: easy reads (JSON-like) and good queries/updates (relational). DuckDB satisfies both because JSON columns are first-class
+
+**Pick up next time:** Start agentic categorization Batch 1 — historical 2021–2024 consumer credit flows (SEB KORT 540k, SANTANDER 199k, WASA KREDIT 105k, EUROCARD 97k). Decide whether to use `Loan payments` or a new `Credit card repayment` category. Target: Uncategorized < 100 000 kr/12 mo after all batches
+
+---
+
 ## 20260515b — KBH30Y caravan onboarded into fleet model
 
 **Type of work:** coding, writing, research

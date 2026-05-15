@@ -33,8 +33,15 @@ All Docker runs use `--network=none`. The financials directory is mounted as `/r
 ```
 ~/financials/
   data/                        # raw SEB exports (xlsx + pdf) — input
-  transactions.json            # output of make extract
-  categorized_transactions.json # output of make categorize
+    db/                        # DuckDB store (NEW — 2026-05-15)
+      transactions.duckdb      # canonical working store; queryable & updatable
+      schema.sql               # table/view definitions (versioned)
+      migrate_from_json.py     # one-shot JSON → DuckDB importer (re-runnable)
+      transaction_db.py        # Python helper module: TransactionDB class
+      workbench.py             # CLI: uncategorized | find | reclassify | history | sql | summary
+      wb                       # Docker wrapper for workbench (host-friendly)
+  transactions.json            # output of make extract (raw input)
+  categorized_transactions.json # snapshot input for migration; legacy report.py still reads this
   categories.json              # master config (rules, limits, flow rules, improvements)
   annotations.json             # exact-match transaction overrides
   accounts.yaml                # account model: household vs external sections, swish_alias, descriptions, intended behaviours, expected deviations
@@ -46,11 +53,78 @@ All Docker runs use `--network=none`. The financials directory is mounted as `/r
   src/financial_advisor/
     extract.py                 # SEB xlsx + pdf → transactions.json
     categorize.py              # rules + annotations → categorized_transactions.json
-    report.py                  # categorized data → Markdown report
+    report.py                  # categorized data → Markdown report (currently reads JSON; DuckDB cutover pending)
   Makefile
   CLAUDE.md                    # this file
   # RULES.md lives in ~/financials/ (private, not in repo)
 ```
+
+### DuckDB store — `~/financials/data/db/`
+
+The DuckDB store is the **live, queryable working copy** of transactions. The
+JSON pipeline still produces `categorized_transactions.json`, which seeds the
+DB via `migrate_from_json.py`. Until `categorize.py` and `report.py` are
+cut over (next step), treat the DB as the source of truth for ad-hoc
+queries, bulk reclassifications, and exploratory categorization work — and
+re-seed it whenever the JSON pipeline runs.
+
+**Schema (tx table):** `pk` (auto-increment PRIMARY KEY) · `sha` (8-char content
+hash, NOT unique — SEB exports have ~2.5 % true duplicates) · `date` · `account`
+· `description` · `merchant` · `amount` · `balance` · `source_file` · `category`
+· `theme` · `raw` (JSON of original row) · `annotated_at` · `annotation_reason`
+· `rule_applied`.
+
+**Auxiliary tables:** `category_rules` (priority-ordered, supports date bounds);
+`categorization_history` (one row per category change, with rule and reason);
+`improvements` (mirror of categories.json improvements list); views
+`v_monthly_category`, `v_uncategorized_top`, `v_recurring_merchants`.
+
+**Re-seed from JSON:**
+```bash
+docker run --rm -u $(id -u):$(id -g) -v "$HOME/financials:/data" \
+  -v /tmp:/tmp -e HOME=/tmp python:3.12-slim \
+  sh -c "pip install --user duckdb -q && \
+         python /data/data/db/migrate_from_json.py"
+```
+
+**Common workbench commands** (via `./wb` wrapper or directly through Docker):
+```bash
+# Top uncategorized merchants
+./wb uncategorized --limit 20
+
+# Find transactions by merchant LIKE pattern
+./wb find 'ECSTER%'
+
+# Preview a bulk reclassification (no writes)
+./wb reclassify --where "merchant LIKE 'ECSTER%'" \
+                --category 'Klarna repayment' \
+                --rule 'klarna-2026-05-15' \
+                --reason 'Klarna amortering — not new shopping' \
+                --dry-run
+
+# Apply the reclassification (writes UPDATE + categorization_history rows)
+./wb reclassify --where "merchant LIKE 'ECSTER%'" \
+                --category 'Klarna repayment' \
+                --rule 'klarna-2026-05-15' \
+                --reason 'Klarna amortering — not new shopping'
+
+# Show audit history for a rule or a specific transaction
+./wb history --rule klarna-2026-05-15
+./wb history --sha b544ad60
+
+# Arbitrary SQL
+./wb sql "SELECT category, SUM(-amount) FROM tx WHERE date >= '2026-04-01' GROUP BY 1"
+
+# Local DuckDB CLI (installed at ~/.local/bin/duckdb) — read-only ad-hoc
+duckdb ~/financials/data/db/transactions.duckdb -c "SELECT * FROM v_uncategorized_top LIMIT 10"
+```
+
+**Reclassification convention:** every bulk update goes through `wb reclassify`
+or `TransactionDB.reclassify()`. Both write one `categorization_history` row
+per affected transaction with `previous_category`, `new_category`,
+`rule_applied`, and `reason`. This is the auditable replacement for ad-hoc
+annotations.json edits — keep `annotations.json` for narrow, single-tx overrides
+the rule engine should respect; use the DB for everything bulk.
 
 ## Report language
 
