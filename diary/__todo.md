@@ -16,7 +16,7 @@ Fixed monthly set-aside amounts for irregular bills, so the household can see wh
                 - ✓ PTJ 029 (Toyota Avensis / Car) — vehicles_report_2026.md complete
                 - ✓ MSA 52U (Kia E-soul / Car) — vehicles_report_2026.md complete
             - Caravan (See /home/uven/repos/aisafe/skills/commands/budget/assets/camper-financial-reality-metrics)
-                - TODO: create camper report
+                - ✓ KBH30Y (Adria Altea 502 UL / Husvagn) — caravan section in vehicles_report_2026.md · försäkring (Folksam 2 524 kr/år), lån (153 723 kr kvar @ 4,7 %), marknadsvärde (220 000 kr) och uppställning (egen tomt, 0 kr) bekräftade · återstår: faktiska reparations-/serviceutgifter (CARAVANHALLE/HUSVAGN FIX historik) för bättre underhållsschablon
             - House (see [text](../../skills/commands/budget/assets/housing-financial-reality-metrics.md))
                 - TODO: create house report
         - Liabilities 
@@ -41,6 +41,12 @@ Fixed monthly set-aside amounts for irregular bills, so the household can see wh
 
 
 ## Shortterm goals (Max 3)
+
+**Asset report: House**
+Last remaining asset in M2-Step1. Use [housing-financial-reality-metrics](../../skills/commands/budget/assets/housing-financial-reality-metrics.md) framework. (Camper KBH30Y ✓ 2026-05-15b.)
+- Pull mortgage state from SEB (kapitalskuld, ränta, term)
+- Insurance + utilities + maintenance reserve
+- Generate house section parallel to vehicles_report_2026.md structure
 
 **Hermes: Categorize transactions and produce reproducible report (Step 4)**
 - Define keyword → category rules (HEMKOP → Groceries, TELIA → Telecom, etc.)

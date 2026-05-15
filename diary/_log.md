@@ -1,3 +1,27 @@
+## 20260515b — KBH30Y caravan onboarded into fleet model
+
+**Type of work:** coding, writing, research
+**Repos touched:** aisafe/projects (diary, __todo.md), ~/financials (vehicles.yaml, vehicles_report_2026.md, generate_vehicle_charts.py, charts/)
+
+**Session highlights:**
+- Added KBH30Y (Adria Altea 502 UL, 2020) as new `caravans:` top-level block in vehicles.yaml — sibling of `vehicles:` so existing car-only iteration keeps working
+- Pulled base specs from car.info (model/year/owners/besiktning history) and Blocket comps (2021 Altea 502 UL at 219 900–249 000 kr → 220 000 kr current_market_value for 2020)
+- Replaced indikativa estimates with confirmed numbers from four screenshot images: Folksam insurance 2 524 kr/yr quarterly, loan avtal 645300540675 at 4,7 % with 153 723 kr / 130 mån remaining, June 2026 invoice breakdown 1 820 kr scheduled vs 2 200 kr actual (380 kr/mo extra amortering)
+- Reframed loan in TCO: ränta + admin (~647 kr/mo) operating cost in TCO; amortering (~1 553 kr/mo with extra) balance-sheet, excluded
+- Storage = egen tomt (0 kr/mo) — final TCO 36 864 kr/yr, monthly set-aside 3 072 kr
+- Extended generate_vehicle_charts.py: TCO/MONTHLY_RECURRING/FUND/body_type-aware burnup all caravan-capable; refactored main() into render_asset() helper iterating cars + caravans; per-10km fleet chart kept cars-only (no km basis for caravan)
+- Generated kbh30y_ledger / kbh30y_tco / kbh30y_burnup PNGs (teal #1ABC9C distinguishes caravan from cars), embedded in report
+
+**Significant learnings:**
+- Caravans depreciate slower than cars — Adria Altea 502 UL 2020 still at ~220 000 kr after 6 years; residual at 2032 (12 yr) realistically 150 000 kr, not 50 000 kr. That alone dropped Ersättningsreserv from 2 564 to 1 923 kr/mo
+- For financed assets, ränta + admin belong in TCO (real operating cost = price of using money this year); only amortering is balance-sheet. Earlier draft incorrectly pulled the full loan payment out of TCO and underreported true cost
+- Slopad fordonsskatt 2026-02-01 (riksdagsbeslut, släp 751–3 000 kg) saves ~360 kr/yr — small but worth flagging in flottlarm as a positive green row
+- At 2032 byte: ~32 600 kr loan remaining vs ~150 000 kr residual = ~117 400 kr net down payment for next caravan — falls out of the model automatically once interest is split from amortization
+
+**Pick up next time:** House report — last asset in M2-Step1. Then resolve the April budget-net definition gap (+27 181 diary vs +9 181 report.py) before running /budget reconcile 2026-05
+
+---
+
 ## 20260515 — Swedish reports, pipeline hardening, financial correctness pass
 
 **Type of work:** coding, debugging, writing
