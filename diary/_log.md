@@ -1,3 +1,25 @@
+## 20260514 — Vehicle financial reality report: fleet model + burnup charts
+
+**Type of work:** coding, planning, research
+**Repos touched:** aisafe/skills, aisafe/projects (financials)
+
+**Session highlights:**
+- Built complete vehicle financial reality report for RKN218, PTJ029, MSA52U — per-car TCO, ledger, and burnup charts
+- Committed to fleet cost model exclusively: removed Avskrivning from all TCO tables, keeping only Ersättningsreserv (monthly accrual toward replacement)
+- All three cars given unified 2032 replacement target (fleet strategy review); Ersättningsreserv amounts recalculated over 78 months (Jun 2026 → Dec 2032)
+- Generated 3 per-vehicle burnup charts showing cumulative savings trajectory with milestone markers
+- Compressed session:end context gathering from ~10 individual tool calls into one batch script (`gather.sh`)
+- Built `/budget car` skill (budget:subagents:car) for per-vehicle financial reality reporting
+
+**Significant learnings:**
+- "True-cost deposit" = total_annual_costs / 12, where total includes all recurring (fuel, accrual, tire reserve, km-based service) — not just scheduled YAML bills; this ensures the deposit actually covers reality
+- Fleet model and consumer TCO double-count capital costs if both Avskrivning and Ersättningsreserv are present — must pick one; fleet model chosen for predictable planning
+- Burnup charts must anchor to the fund start date (not the odometer reading date) or milestone dates come out wrong
+
+**Pick up next time:** Update vehicles.yaml monthly_set_aside values (PTJ029: 4,038 kr, MSA52U: 5,728 kr — still shows 0); open the three replacement savings accounts and start funding them
+
+---
+
 ## 20260510b — /budget skill: reconcile phase built and dry-run against April facit
 
 **Type of work:** coding, planning, research
