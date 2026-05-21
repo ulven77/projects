@@ -42,6 +42,22 @@ Fixed monthly set-aside amounts for irregular bills, so the household can see wh
 
 ## Shortterm goals (Max 3)
 
+**Konto-modellöversyn — fundera på hur kontona faktiskt används**
+Pausad 2026-05-21. Vi hittade tre tydliga avvikelser mellan accounts.yaml `intended_behaviours` och faktisk data:
+1. 🟡 Sparflöden (ISK, Lysa, Ella försäkringspengar) går via Gemensamt räkningar, inte direkt från Gemensamt lön som mental modell antar.
+2. 🔴 Gemensamt lön används som **direkt utgiftskonto** för många kategorier, inte bara distributionsnav: 116 kkr/år direkt till mat (kringgår Matvecka), 19 kkr försäkringspremier, 18 kkr Linneas månadspeng, 15,5 kkr RKN218-bensinkonto, 13 kkr till gemensamt kök (som ska vara dormant), plus direkta livsmedelsköp på lön-kortet.
+3. 🟡 Petras fickpeng är sporadisk (3 utbetalningar senaste 12 mån, ofta i lumps) istället för månadsvis som intentionen säger.
+
+Hela inventeringen finns i `~/financials/account-flow.md` med flowchart + tabeller + avvikelser. Källa: `~/financials/account_flows.yaml`. Pedagogisk version används också för att rita en mental modell.
+
+**Öppna frågor att fundera på:**
+- Vad är 56900725627? 20 tx från lön på sammanlagt 31 397 kr/år. Hampus, gammal extern motpart, eller annat? (Också flaggat under Agentic categorization Batch 2 nedan — fynden är samma konto.)
+- **Renoda lön**: flytta direktutgifter (PREMIE FÖRS, ICA-köp på kortet, MÅNADSPENG, RKN218-fond) till räkningar/uffe betalkonto → lön blir bara distributionsnav?
+- **Eller acceptera mönstret**: uppdatera accounts.yaml så lön beskrivs som "income + ad-hoc spend" och lägg till de saknade återkommande flödena (lön→mat, lön→MÅNADSPENG, lön→RKN218) i `account_flows.yaml`?
+- Skissa om SEB-kontostrukturen mer holistiskt: stämmer rollerna i accounts.yaml fortfarande?
+
+**När detta tas vidare:** beslut → uppdatera accounts.yaml (`intended_behaviours` + `roles[]`-historik om något konto bytt syfte) → uppdatera account_flows.yaml (lägg till saknade flöden eller justera) → kör om generate_account_flow_report.py och v_internal_transfer_coverage för att se täckningen.
+
 **Agentic categorization workflow** (on top of new DuckDB foundation)
 Systematic, audited reduction of Uncategorized 426 483 kr/12 mo using the `wb` workbench. Claude works through Uncategorized merchants in batches, proposes patterns, dry-runs, applies — every change leaves a `categorization_history` row.
 - Batch 1 — recurring large flows (SEB KORT, SANTANDER, WASA KREDIT, EUROCARD) — historical 2021–2024 consumer credit. Likely `Loan payments` or new `Credit card repayment` category. ~1 000 000 kr cumulative.

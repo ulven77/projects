@@ -1,3 +1,71 @@
+## 20260521 — Account-flow report + observed deviations between intent and reality
+
+**Type of work:** coding, writing, research
+**Repos touched:** ~/financials (account_flows.yaml + account-flow.md + generate_account_flow_report.py), aisafe/projects (__todo.md)
+
+**Session highlights:**
+- Built `~/financials/generate_account_flow_report.py` (285 lines) that produces `account-flow.md` from `account_flows.yaml` + `accounts.yaml`. Renders a Mermaid flowchart with subgraphs (SEB-konton / Lysa / Externa / Personliga konton), edge labels (amount + description_pattern), purpose-coded line styles, plus full tables for active and closed flows.
+- Iterated layout: `flowchart TD` → `flowchart LR` (left-to-right per user request), then moved Uffe betalkonto + Petra personal into a dedicated "Personliga konton" subgraph declared last so they render at the bottom of the LR layout (Mermaid stacks subgraphs in declaration order).
+- Added missing edge to `account_flows.yaml`: Lön → Petra personal allowance. Verified in data first — actual cadence is sporadic (3 outgoing tx in last 12 mo from lön: −500, −9 000, −3 000 kr), not the monthly 3 000 kr that accounts.yaml's intended_behaviours claims.
+- Added a `deviations:` block to `account_flows.yaml` and a `render_deviations()` function to the generator. Three observed deviations documented as the first entries:
+  1. 🟡 Sparflöden (ISK, Lysa, Ella försäkringspengar) go via Räkningar, not direct from Lön as mental model assumes. Zero direct Lön → ISK/Lysa flows in 5+ years of data.
+  2. 🔴 Lön used as direct expense account, not just distribution hub: 116 kkr direct to mat (bypassing Matvecka), 19 kkr försäkringspremier, 18 kkr Linneas månadspeng, 15,5 kkr to RKN218 bensinkonto, 13 kkr to "dormant" kök account, direct ICA/HEMKOP groceries on lön's card, and 31 kkr to unknown account 56900725627 (20 tx, recipient unidentified).
+  3. 🟡 Petras allowance is sporadic, not monthly as intended.
+- Paused the technical work and added new shortterm goal "Konto-modellöversyn" to `__todo.md` capturing the three open decisions: identify 56900725627; renoda lön back to distribution nav or accept-and-document as income+ad-hoc-spend; revisit the broader SEB account structure.
+
+**Significant learnings:**
+- Mermaid `flowchart LR` stacks subgraphs vertically in declaration order — moving "Personliga konton" to last in the generator pushed it to the bottom without any positioning hacks.
+- Comparing accounts.yaml `intended_behaviours` against actual outgoing-tx descriptions on each account is a cheap and high-value audit. 185 distinct outgoing description patterns on lön surfaced the lön-as-expense-account pattern that's been quietly accumulating for years.
+- A `deviations:` block as data (in YAML) beats prose-in-a-report-section. The generator can grow over time, severity badges enable ordering, and each entry's intended/observed/evidence/action_options structure forces the analyst (me) to back claims with specifics.
+
+**Pick up next time:** Decide direction on Konto-modellöversyn — what is 56900725627, renoda lön, or accept-and-document the broad usage. Then either P6 reports (Reserve Funding Ratio, Function/Object pies) or the April budget-net definition gap (+27 181 diary vs +9 181 report.py).
+
+---
+
+## 20260518 — P2-P5 cutover: contracts, multi-split, DuckDB-backed report.py; ECSTER reveal
+
+**Type of work:** coding, debugging, writing
+**Repos touched:** ~/financials (account_flows.yaml + recurring_contracts.yaml + DB schema + loaders), aisafe/projects (financial_advisor/CLAUDE.md, pyproject.toml, report.py, __todo.md)
+
+**Session highlights:**
+- P2 — Account graph: 18 edges loaded into `account_flow` from `~/financials/account_flows.yaml`. New `load_account_flows.py` + `v_internal_transfer_coverage` view (specificity-ranked match: longest description_pattern wins, null-pattern flows are documentation-only). 294/794 outgoing internal transfers matched on first run (37 %, 2.43 Mkr). Orphans surfaced two structural findings: Lön → Buffer 259 kkr/year and Ella mobil → Lön 253 kkr (the latter validating the roles[] schema premise — account 56990319038 had a former role).
+- P3 — Recurring contracts: 21 high-confidence vendors in `~/financials/recurring_contracts.yaml` (6 streaming/subs, telecom, sport, 3 union/A-kassa, månadspeng, 2 health, 4 loans, 3 insurance). New `v_recurring_match` (tightest-drift wins) + `v_contract_anomalies` (expected vs actual per contract). Apply step tagged 496 sub_txs with category + economic_function + object + recurring_id. Anomalies surfaced unprompted: Adobe 17 vs 12 expected (duplicate?), Enkla vardag 24 vs 12 (two policies under one merchant name), HBO Max 8/10 active months.
+- Windowing fix: introduced `expected_per_year` override (true count) separate from `expected_months` (broad — months when billing CAN land, for matcher). Anomaly view uses contract's [active_from, active_to] ∩ 12-COMPLETE-month analysis window. Active_from auto-fills from earliest matching tx if not in YAML.
+- P4 — Multi-split contracts: caravan loan (4 fixed splits: ränta 602 + admin 45 + amortering 1173 + residual extra) and 3 mortgage tranches (fraction 0.715 ränta + residual amortering, from housing report's aggregate ratio). Loader grew an idempotent reset (delete idx>0 + restore idx=0 amount from `tx.raw`) and multi-split apply (UPDATE idx=0 + INSERT idx 1..N-1 with categorization_history rows). 75 txs split into 144 new sub_tx rows. Integrity green.
+- P5 — Cutover: `report.py` lost JSON-load, gained `load_accounts_from_db()` querying `v_tx_sub`. Each sub_tx is a row; multi-split tx appear as 2-4 rows sharing the SHA, balance only on idx=0. accounts.yaml `roles[]` schema bridge via `_account_display_name()`. duckdb added to pyproject.toml + image rebuilt. April 2026 reconciled vs facit with two explainable deltas: −1 550 kr expenses (RKN218 reclass), Klarna ECSTER moved between expense categories.
+- Late-day correction: user pointed at the caravan loan invoice screenshot and said "ECSTER is the caravan loan". Data investigation confirmed: ECSTER amounts decline month-over-month (2 170 Sep 2024 → 1 825 Apr 2026 matching invoice 1 820), classic amortizing pattern. Meanwhile 96305773041 had been mistakenly tagged as caravan loan — it's actually a samlings-blankolån (~10 kkr remaining, separate from caravan, with 100 kkr lump on 2025-03-14 being the original consolidation event). Tightened migrate's hardcoded Klarna cleanup to K* KLARNA only; repointed caravan loan contract to ECSTER with declining-amount tolerance and fraction-based ränta split; added new contract for 96305773041. Vehicles.yaml financing block updated; the spurious "user pays 380 kr extra amortering" narrative removed.
+
+**Significant learnings:**
+- "Confidence in inferred patterns scales with the breadth of evidence behind them" — the 96305773041 → "Caravan loan" mapping had been confidently propagated through migrate, recurring contract YAML, vehicles.yaml financing block, and even into the housing report's commentary. One sentence from the user dismantled it. Single-column inference at 12 hits is not enough to claim a vendor identity.
+- For financed assets, ränta + admin ARE operating cost (price of using money this year) and belong in TCO; only amortering is balance-sheet. Earlier attempts that excluded the entire loan payment from TCO under-reported true cost.
+- Mermaid `expected_months` (matcher's gate — broad to absorb bank-day shifts) vs `expected_per_year` (anomaly view's true count) cleanly separates "what's billable" from "how often is billing expected". The Villa+hem quarterly that spreads across 8 candidate months but bills 4 times a year was the use case that forced this split.
+
+**Pick up next time:** Pause and let the foundation settle, OR pick up agentic categorization Batch 1 (historical 2021–2024 consumer credit flows: SEB KORT, SANTANDER, WASA KREDIT, EUROCARD), OR investigate the 56900725627 mystery account.
+
+---
+
+## 20260516 — DuckDB P1: sub_tx + recurring + account_flow tables; accounts.yaml roles[] schema; Lysa accounts
+
+**Type of work:** coding, writing
+**Repos touched:** ~/financials (accounts.yaml + db/* + transactions.duckdb), aisafe/projects (financial_advisor/CLAUDE.md)
+
+**Session highlights:**
+- Added Lysa as first-class account namespace in `accounts.yaml` — new top-level `lysa:` block keyed by Lysa UUIDs (no SEB account numbers). Four accounts: Lysakonto, Sparkonto, Bred (closed), Ella Försäkringspengar 2024-12-20. Iterated through two Lysa exports — Lysakonto 2 got consolidated into Lysakonto and "Renoveringsfond Frönäs 5:9" (1 kr seed, 2026-05-16) appeared, matching the housing report's previously-mysterious "Lysakonto 3" reference. Cross-reference noted in YAML header comment.
+- Introduced `roles[]` time-bounded schema for household accounts. Motivation: SEB caps account count, so the same account number gets repurposed over years (e.g., account 56990319038 was potentially a project earmark before its current "Ella mobil — dormant" role). All 17 household accounts migrated to single-element `roles[]` lists with `from: null, to: null`. New `_account_display_name()` helper handles both shapes (legacy flat for external/lysa, role-based for household).
+- P1 schema rewrite in DuckDB: `tx` (immutable bank obs, unique sha PK), `sub_tx` (≥1 per tx, the classification carrier), `recurring` (cashflow contracts), `account_flow` (graph edges), `categorization_history` (audit at sub_tx level). The double-entry invariant `SUM(sub_tx.amount) = tx.amount` is enforced via `v_split_integrity` view.
+- SHA uniqueness fix: hash input now includes `occurrence_within_group` (0, 1, 2... for same-content rows within an import). Re-importing the same export is now an idempotent no-op (PK enforces it). The 259 historical SEB collisions (back-to-back same-amount transfers) get distinct hashes that stay stable across re-imports.
+- Migration ran clean: 10 678 tx → 10 678 sub_tx (1:1 baseline), zero integrity violations. Two known cleanups (ECSTER+K\* KLARNA → Klarna repayment, BENSIN/AVGIFT RÄKAN → Internal transfers) re-applied at sub_tx level. Note: the ECSTER half of the Klarna cleanup turned out to be wrong (corrected on 2026-05-18 — ECSTER is the caravan loan).
+- `transaction_db.py` + `workbench.py` rewritten to operate on sub_tx via `v_tx_sub` joined view. `wb reclassify` takes `--field` (category | economic_function | object | recurring_id). `wb integrity` checks the double-entry invariant.
+
+**Significant learnings:**
+- SEB exports contain ~2.5 % true SHA collisions because two same-day same-amount same-account-and-description back-to-back transfers hash identically with `sha256("{date}|{account}|{description}|{amount}")`. The fix preserves the 8-char SHA convention by adding occurrence-within-group as a hash input. Idempotent re-imports drop out for free.
+- Separation of observation (tx) from interpretation (sub_tx) lets the model handle bundled payments without losing fidelity. A 2 200 kr loan tx becomes one row in tx (immutable bank fact) and four rows in sub_tx (ränta + admin + amortering schedule + extra), each with its own category/function/object tags, summing to 2 200.
+- The `roles[]` schema for accounts.yaml turned out to be exactly what was needed — the next day's orphan-flow analysis surfaced a 253 kkr Ella mobil → Lön historical pattern that strongly hints the account had a former role. Without `roles[]` there would have been nowhere to express that.
+
+**Pick up next time:** P2 — populate `account_flow` from accounts.yaml prose so internal-transfer auto-classification has documented structure to lean on.
+
+---
+
 ## 20260515c — Lifestyle report + DuckDB cutover
 
 **Type of work:** coding, writing, devops, research

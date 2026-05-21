@@ -1,4 +1,13 @@
-"""Generate a monthly budget report as Markdown with Mermaid charts."""
+"""Generate a monthly budget report as Markdown with Mermaid charts.
+
+Reads from the DuckDB transaction store at /reports/data/db/transactions.duckdb
+(populated by migrate_from_json.py + load_account_flows.py +
+load_recurring_contracts.py --apply). Each sub_tx is treated as one
+"transaction" row in the report — for unsplit tx this is 1:1 with the legacy
+JSON pipeline; multi-split tx (mortgage interest+amortization, caravan loan
+ränta/admin/amortering/extra) appear as multiple rows that sum to the tx
+amount.
+"""
 
 import json
 import re
@@ -7,10 +16,11 @@ from collections import defaultdict
 from datetime import date, datetime
 from pathlib import Path
 
+import duckdb
 import yaml
 
 REPORTS_DIR = Path("/reports")
-CATEGORIZED_FILE = REPORTS_DIR / "categorized_transactions.json"
+DB_FILE = REPORTS_DIR / "data" / "db" / "transactions.duckdb"
 CATEGORIES_FILE = REPORTS_DIR / "categories.json"
 ACCOUNTS_FILE = REPORTS_DIR / "accounts.yaml"
 
@@ -23,6 +33,15 @@ CATEGORY_SV = {
     "Alcohol": "Alkohol",
     "Caravan": "Husvagn",
     "Caravan loan": "Husvagnslån",
+    "Caravan loan ränta": "Husvagnslån ränta",
+    "Caravan loan admin": "Husvagnslån admin",
+    "Caravan loan amortering": "Husvagnslån amortering",
+    "Caravan loan amortering (schedule)": "Husvagnslån amortering",
+    "Caravan loan extra amortering": "Husvagnslån extra amortering",
+    "Klarna repayment": "Klarna återbetalning",
+    "Mortgage interest": "Bolån ränta",
+    "Mortgage amortization": "Bolån amortering",
+    "Unsecured loan": "Blankolån",
     "Cash & manual": "Kontant & manuellt",
     "Children & allowances": "Barnbidrag & bidrag",
     "Clothing": "Kläder",
@@ -67,6 +86,7 @@ THEME_SV = {
     "Vehicles": "Fordon",
     "Food & groceries": "Mat & livsmedel",
     "Allowance": "Fickpeng",
+    "Loans": "Lån",
 }
 
 MONTH_SV = [
@@ -172,9 +192,86 @@ def build_transfer_pairs(all_transfers: list[dict], account_map: dict[str, str])
     return pairs
 
 
+def load_accounts_from_db(con, report_year: int, report_month: int) -> list[dict]:
+    """Build the accounts list (one entry per account, with a `transactions`
+    sub-list) from the DuckDB store.
+
+    Each sub_tx becomes a "transaction" in the returned shape. For unsplit
+    tx (count of sub_tx for that sha is 1) this is identical to the legacy
+    1-row-per-tx model. For multi-split tx the row count multiplies, but
+    sub_tx.amount sums to tx.amount per sha so all aggregates stay correct.
+
+    `balance` is bank-level (on tx); we attach it to idx=0 only and leave
+    other split rows blank to avoid implying separate balances per split.
+    """
+    month_start = f"{report_year}-{report_month:02d}-01"
+    if report_month == 12:
+        month_end_exclusive = f"{report_year + 1}-01-01"
+    else:
+        month_end_exclusive = f"{report_year}-{report_month + 1:02d}-01"
+
+    rows = con.execute(
+        """
+        SELECT
+            t.account,
+            t.source_file,
+            t.date,
+            t.description,
+            t.merchant,
+            t.balance,
+            t.sha,
+            s.idx,
+            s.amount,
+            s.category,
+            s.economic_function,
+            s.object,
+            s.recurring_id
+        FROM tx t
+        JOIN sub_tx s ON s.tx_sha = t.sha
+        WHERE t.date >= ? AND t.date < ?
+        ORDER BY t.account, t.date, t.sha, s.idx
+        """,
+        (month_start, month_end_exclusive)
+    ).fetchall()
+
+    # Also surface the source per account (any non-null source_file we see)
+    per_account: "dict[str, dict]" = {}
+    for (account, source, date_, description, merchant, balance, sha, idx,
+         amount, category, economic_function, object_, recurring_id) in rows:
+        entry = per_account.setdefault(account, {
+            "account": account,
+            "source": source or "",
+            "transactions": [],
+        })
+        if source and not entry["source"]:
+            entry["source"] = source
+        entry["transactions"].append({
+            "id": sha,
+            "date": date_.isoformat() if hasattr(date_, "isoformat") else str(date_),
+            "account": account,
+            "description": description or "",
+            "merchant": merchant or description or "",
+            "balance": float(balance) if balance is not None and idx == 0 else None,
+            "amount": float(amount) if amount is not None else 0.0,
+            "category": category or "Uncategorized",
+            "economic_function": economic_function,
+            "object": object_,
+            "recurring_id": recurring_id,
+            "idx": int(idx),
+        })
+
+    return list(per_account.values())
+
+
 def main():
-    if not CATEGORIZED_FILE.exists():
-        print(f"ERROR: {CATEGORIZED_FILE} not found — run 'make categorize' first.", file=sys.stderr)
+    if not DB_FILE.exists():
+        print(
+            f"ERROR: {DB_FILE} not found — run the DB pipeline:\n"
+            "  python /reports/data/db/migrate_from_json.py\n"
+            "  python /reports/data/db/load_account_flows.py\n"
+            "  python /reports/data/db/load_recurring_contracts.py --apply",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     if len(sys.argv) > 1:
@@ -190,7 +287,9 @@ def main():
     month_label = f"{report_year}-{report_month:02d}"
     month_name = sv_month(report_year, report_month)
 
-    accounts = json.loads(CATEGORIZED_FILE.read_text())
+    con = duckdb.connect(str(DB_FILE), read_only=True)
+    accounts = load_accounts_from_db(con, report_year, report_month)
+    con.close()
 
     cats_data = json.loads(CATEGORIES_FILE.read_text()) if CATEGORIES_FILE.exists() else {}
     super_map: dict[str, str] = cats_data.get("super_categories", {})
@@ -202,14 +301,31 @@ def main():
     excepted_ids: set[str] = set(exceptions)
 
     accounts_raw: dict = yaml.safe_load(ACCOUNTS_FILE.read_text()) if ACCOUNTS_FILE.exists() else {}
-    account_map: dict[str, str] = {
-        key: entry["name"] if isinstance(entry, dict) else entry
-        for section in ("household", "external")
-        for key, entry in accounts_raw.get(section, {}).items()
-    }
-    for entry in accounts_raw.get("household", {}).values():
-        if isinstance(entry, dict) and entry.get("swish_alias"):
-            account_map[entry["swish_alias"]] = entry["name"]
+
+    def _account_display_name(entry) -> str:
+        """Read a display name from an accounts.yaml entry. Supports two
+        shapes: the legacy flat `{name: ...}` (used by `external:` and `lysa:`)
+        and the role-aware `{roles: [{name, from, to, ...}, ...]}` (used by
+        `household:` since P2). The newest role wins for households."""
+        if not isinstance(entry, dict):
+            return entry
+        if "name" in entry:
+            return entry["name"]
+        roles = entry.get("roles") or []
+        if roles:
+            return roles[0].get("name", "") if isinstance(roles[0], dict) else ""
+        return ""
+
+    account_map: dict[str, str] = {}
+    for section in ("household", "external", "lysa"):
+        for key, entry in accounts_raw.get(section, {}).items():
+            account_map[key] = _account_display_name(entry)
+    # Swish alias mapping: external counterparts with swish_alias, plus any
+    # household entry that has one (legacy + role-based both supported).
+    for section in ("household", "external"):
+        for entry in accounts_raw.get(section, {}).values():
+            if isinstance(entry, dict) and entry.get("swish_alias"):
+                account_map[entry["swish_alias"]] = _account_display_name(entry)
 
     def super_cat(category: str) -> str:
         return super_map.get(category, category)
@@ -561,8 +677,12 @@ def main():
             desc = tx.get("merchant") or tx.get("description", "")
             tx_id = tx.get("id", "")
             if has_balance:
-                bal = tx["balance"]
-                bal_str = f"{abs(bal):,.0f} kr".replace(",", " ")
+                bal = tx.get("balance")
+                if bal is None:
+                    # Split row (idx > 0) — balance lives only on the first split row
+                    bal_str = ""
+                else:
+                    bal_str = f"{abs(bal):,.0f} kr".replace(",", " ")
                 out.append(f"| `{tx_id}` | {tx['date']} | {desc} | {cat} | {sign}{fmt(amt)} | {bal_str} |")
             else:
                 out.append(f"| `{tx_id}` | {tx['date']} | {desc} | {cat} | {sign}{fmt(amt)} |")

@@ -1,0 +1,29 @@
+# 20260518 — Contracts, Splits, and the ECSTER Reveal
+
+A day of compounding wins. By dinner the household's financial pipeline had a proper contract layer, mortgages and the caravan loan were split into ränta + amortering at row level, and `report.py` was reading from DuckDB instead of JSON. Then late in the day a single screenshot from the user reshuffled what we thought we knew about ECSTER, and a quick correction cascaded cleanly through all the layers.
+
+## What happened
+
+P2 first — the account-flow graph. 18 edges got loaded into `account_flow` from a new `~/financials/account_flows.yaml`: lön → räkningar (bulk), lön → uffe betalkonto (allowance), lön → hus-konton (500/mo each), the MAT pipeline with the 2026-05-01 routing change captured as two time-bounded edges, ISK Månadssparande, Matvecka weekly drips, Hampus island liquidity flows, Lysa autogiro and withdrawals. A new `v_internal_transfer_coverage` view joined sub_tx (where category='Internal transfers') against the graph to see what matched and what was orphan. First run: 294 / 794 matched (37 %, 2.43 Mkr). The orphans surfaced two structural findings: 259 kkr/year Lön → Buffer (likely Lysa funding) and 253 kkr Ella mobil → Lön (a former-role hint that validated the roles[] schema introduced the day before).
+
+P3 — recurring contracts. 21 high-confidence vendor contracts went into `~/financials/recurring_contracts.yaml`: 6 streaming/subscriptions, Telia, Styrkefabrik, 3 union dues, Linneas månadspeng, 2 healthcare, 4 loan-payment contracts, 3 insurance. The contract matcher (`v_recurring_match`) handles tolerance-bounded matching, picks tightest drift when multiple contracts could match, and the `--apply` step writes category + economic_function + object onto matched sub_txs. 496 sub_txs got auto-tagged. The anomaly view (`v_contract_anomalies`) surfaced findings without being asked: Adobe at 17 matches vs expected 12 (duplicate billing?), Enkla vardag at exactly 2× per month (two distinct policies under one merchant name), HBO Max paused 2 months. The `expected_months` (broad — for matcher) vs `expected_per_year` (true count — for anomaly accounting) distinction emerged out of trying to model Folksam's quarterly bills that sometimes shift across month boundaries.
+
+P4 — multi-split contracts. The four loan contracts got proper splits: caravan loan (4 fixed amounts: ränta + admin + amortering + extra), three mortgage tranches (2 splits each: fraction 0.715 ränta + residual amortering, from the housing report's aggregate ratio). The loader's apply step grew an idempotent reset (delete idx>0 sub_txs with `rule_applied LIKE 'recurring-%'`, restore idx=0 amounts from `tx.raw`) and a multi-split path that updates idx=0 + inserts idx 1..N-1. 75 txs got split into 144 new sub_tx rows. Integrity green throughout.
+
+P5 — the cutover. `report.py` lost its JSON-load and gained a `load_accounts_from_db()` function that queries `v_tx_sub` for the report month and yields the same `accounts → transactions[]` shape the markdown generator already knew. Each sub_tx is now a row; multi-split tx appear as 2–4 rows sharing the SHA, balance only on idx=0. The accounts.yaml `roles[]` schema bridge let the report keep working without changes elsewhere. Image rebuilt with duckdb added to pyproject. April 2026 reconciled against the facit with two explainable deltas: −1 550 kr expenses (the RKN218 reclassification), and Klarna ECSTER moved between expense categories (no total change).
+
+Then the ECSTER reveal. The user pointed at one of the invoice screenshots and said: "ecster is the loan for the caravan." Five minutes of data investigation confirmed it: ECSTER amounts declined month-over-month from 2 170 kr (Sep 2024) to 1 825 kr (Apr 2026) — classic amortizing-loan pattern, matching the June 2026 invoice's scheduled 1 820 kr. Meanwhile `96305773041` had been exactly 2 200 kr flat with a single 100 kkr lump on 2025-03-14 — a different loan entirely. The user named it: samlings-blankolån, ~10 kkr remaining, the lump was the consolidation event. The fix cascaded: migrate's hardcoded cleanup tightened to K\* KLARNA only (ECSTER no longer mass-renamed); the caravan loan contract repointed to vendor_pattern "ECSTER" with declining-amount tolerance and a fraction-based ränta split; new contract added for 96305773041. Re-applied. April 2026 totals unchanged (both were already classified as expenses, only the categories shifted). Vehicles.yaml's financing block updated to remove the spurious "user pays 2 200 kr/mo with 380 kr extra amortering" narrative — that was the wrong tx pattern all along.
+
+## Interesting moments
+
+The most consequential moment was the user pointing at one image and dismantling a confidently-wrong narrative. The "380 kr extra amortering" had been part of the model for days — even ended up in the caravan TCO commentary in vehicles_report_2026.md as a feature, not a bug. One sentence ("ecster is the loan for the caravan") and the whole thing unwound. Lesson: confidence in inferred patterns scales with the breadth of evidence behind them. A single data column (96305773041 at 2 200 kr/mo with 12 hits) felt like enough; it wasn't.
+
+The other satisfying moment was the multi-split apply landing without integrity violations on the first try. Computing N split amounts (mix of fixed + fraction + residual), verifying they sum to tx.amount within 0.01 kr, then atomically updating idx=0 + inserting idx 1..N-1 with a categorization_history row per change — and `v_split_integrity` returning zero rows. The double-entry invariant earning its keep without drama.
+
+## How it felt
+
+[Not recorded]
+
+## What's next
+
+Pause the categorization-rework momentum (P6 reports are queued but not urgent) and let the foundation settle. Or: pick up the orphan-flow investigation — what is account `56900725627` (113 txs in v_uncategorized_top, 31 kkr/year from lön)?
